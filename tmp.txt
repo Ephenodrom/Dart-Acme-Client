@@ -1,0 +1,14 @@
+{
+  "status": "pending",
+  "expires": "2021-10-04T15:27:35.000Z",
+  "authorizations": [
+    "https://acme-staging-v02.api.letsencrypt.org/acme/authz-v3/579194038"
+  ],
+  "finalize": "https://acme-staging-v02.api.letsencrypt.org/acme/finalize/27941138/629582468",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "ephenodrom.de"
+    }
+  ]
+}
