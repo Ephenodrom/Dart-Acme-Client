@@ -35,7 +35,7 @@ Update pubspec.yaml and add the following line to your dependencies.
 
 ```yaml
 dependencies:
-  acme_client: ^1.0.1
+  acme_client: ^1.1.0
 ```
 
 ## Import
