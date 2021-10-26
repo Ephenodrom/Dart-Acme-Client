@@ -1,6 +1,6 @@
-# Basic Utils
+# Dart Acme Client
 
-A dart package for many helper methods fitting different situations.
+An ACME V2 compatible client written in Dart.
 
 ## Table of Contents
 
@@ -35,7 +35,7 @@ Update pubspec.yaml and add the following line to your dependencies.
 
 ```yaml
 dependencies:
-  acme_client: ^1.0.0
+  acme_client: ^1.0.1
 ```
 
 ## Import
@@ -70,7 +70,7 @@ Create a new client by calling the constructor and pass the appropriate paramete
 * acceptTerms = Accept terms and condition while creating / fetching an account.
 * contacts = A list of email addresses. Each address should have the format 'mailto:jon@doe.com'.
 
-**Note**: If you want to create a RSA/ECC key pair with Dart, take a look at the [Basic Utils](https://github.com/Ephenodrom/Dart-Basic-Utils) Package. The X509Utils and CryptoUtils, contain everything needed for creating a key pair and formating it to PEM. 
+**Note**: If you want to create a RSA/ECC key pair with Dart, take a look at the [Basic Utils](https://github.com/Ephenodrom/Dart-Basic-Utils) Package. The X509Utils and CryptoUtils, contain everything needed for creating a key pair and formating it to PEM.
 
 After the client is setup, call the **init()** method, to fetch the directories and account information from the server. If there is no account for the given public key on the server, the client will create a new account.
 
