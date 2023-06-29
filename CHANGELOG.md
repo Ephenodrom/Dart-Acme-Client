@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2023-06-29
+
+* Update dependencies
+
 ## [1.1.0] - 2021-10-26
 
 * Improved README
