@@ -10,7 +10,7 @@ ChallengeError _$ChallengeErrorFromJson(Map<String, dynamic> json) =>
     ChallengeError(
       detail: json['detail'] as String?,
       type: json['type'] as String?,
-      status: json['status'] as String?,
+      status: json['status'] as int?,
     );
 
 Map<String, dynamic> _$ChallengeErrorToJson(ChallengeError instance) {

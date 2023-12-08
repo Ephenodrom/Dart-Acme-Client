@@ -6,7 +6,7 @@ part 'ChallengeError.g.dart';
 class ChallengeError {
   String? type;
   String? detail;
-  String? status;
+  int? status;
 
   ChallengeError({this.detail, this.type, this.status});
 
