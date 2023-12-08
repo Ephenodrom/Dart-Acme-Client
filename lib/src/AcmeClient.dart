@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/Constants.dart';
 import 'package:acme_client/src/AcmeUtils.dart';
+import 'package:acme_client/src/Constants.dart';
 import 'package:acme_client/src/model/Account.dart';
 import 'package:acme_client/src/model/AcmeDirectories.dart';
 import 'package:acme_client/src/model/Authorization.dart';
@@ -112,7 +112,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       var orderUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -122,9 +122,9 @@ class AcmeClient {
       var newOrder = Order.fromJson(response.data);
       newOrder.orderUrl = orderUrl;
       return newOrder;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = e.response!.headers.map[headerReplayNounce]!.first;
 
       return null;
     }
@@ -145,12 +145,12 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       var newOrder = Order.fromJson(response.data);
       return newOrder;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = e.response!.headers.map[headerReplayNounce]!.first;
 
       return null;
     }
@@ -160,18 +160,18 @@ class AcmeClient {
   /// Fetches a list of current running orders
   ///
   Future<List<String>?> orderList() async {
-    var jws = await _createJWS(account!.accountURL! + '/orders', useKid: true);
+    var jws = await _createJWS('${account!.accountURL!}/orders', useKid: true);
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
       var response = await Dio().post(
-        account!.accountURL! + '/orders',
+        '${account!.accountURL!}/orders',
         data: body,
         options: Options(headers: headers),
       );
       print(response.data);
       return <String>[];
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
       return null;
     }
@@ -184,9 +184,8 @@ class AcmeClient {
   ///
   Future<bool> validate(Challenge challenge, {int maxAttempts = 15}) async {
     var jws = await _createJWS(challenge.url!, useKid: true, payload: {
-      'keyAuthorization': challenge.token! +
-          '.' +
-          AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem))
+      'keyAuthorization':
+          '${challenge.token!}.${AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem))}'
     });
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
@@ -196,8 +195,8 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-    } on DioError catch (e) {
+      nonce = response.headers.map[headerReplayNounce]!.first;
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
 
@@ -211,12 +210,12 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+        nonce = response.headers.map[headerReplayNounce]!.first;
         var auth = Authorization.fromJson(response.data);
         if (auth.status == 'valid') {
           return true;
         }
-      } on DioError catch (e) {
+      } on DioException catch (e) {
         print(e.response!.data!.toString());
       }
       maxAttempts--;
@@ -242,14 +241,14 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+        nonce = response.headers.map[headerReplayNounce]!.first;
         var a = Authorization.fromJson(response.data);
         a.digest = AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem));
         for (var chall in a.challenges!) {
           chall.authorizationUrl = authUrl;
         }
         auth.add(a);
-      } on DioError catch (e) {
+      } on DioException catch (e) {
         print(e.response!.data!.toString());
       }
     }
@@ -287,11 +286,12 @@ class AcmeClient {
         options: Options(headers: headers),
       );
       var persistent = Order.fromJson(response.data);
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       return persistent;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
+    return null;
   }
 
   ///
@@ -320,11 +320,12 @@ class AcmeClient {
           b.clear();
         }
       }
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       return certs;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
+    return null;
   }
 
   ///
@@ -358,7 +359,7 @@ class AcmeClient {
             return true;
           }
         }
-      } on DioError {
+      } on DioException {
         // Do nothing
       }
       await Future.delayed(Duration(seconds: 4));
@@ -387,7 +388,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       var accountUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -397,11 +398,11 @@ class AcmeClient {
       var account = Account.fromJson(response.data);
       account.accountURL = accountUrl;
       return account;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       if (createIfnotExists) {
         // No account found, create one
         if (e.response!.statusCode == 400) {
-          nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
+          nonce = e.response!.headers.map[headerReplayNounce]!.first;
           return await createAccount();
         }
       }
@@ -430,7 +431,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      nonce = response.headers.map[headerReplayNounce]!.first;
       var accountUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -440,7 +441,7 @@ class AcmeClient {
       var account = Account.fromJson(response.data);
       account.accountURL = accountUrl;
       return account;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.message);
       // TODO Handle error
       return null;
@@ -481,7 +482,7 @@ class AcmeClient {
   /// Fetches the directories from the ACME server
   ///
   Future<AcmeDirectories> _getDirectories() async {
-    var response = await Dio().get(baseUrl + '/directory');
+    var response = await Dio().get('$baseUrl/directory');
     return AcmeDirectories.fromJson(response.data);
   }
 
@@ -490,8 +491,8 @@ class AcmeClient {
   ///
   Future<String?> _getNonce() async {
     var response = await Dio().head(directories!.newNonce!);
-    if (response.headers.map.containsKey(HEADER_REPLAY_NONCE)) {
-      return response.headers.map[HEADER_REPLAY_NONCE]!.first;
+    if (response.headers.map.containsKey(headerReplayNounce)) {
+      return response.headers.map[headerReplayNounce]!.first;
     } else {
       return null;
     }
@@ -501,11 +502,11 @@ class AcmeClient {
   /// Validates the client data. Throws an [ArgumentError] if values are missing or incorrect.
   ///
   void validateData() {
-    contacts.forEach((element) {
+    for (var element in contacts) {
       if (!element.startsWith('mailto')) {
         throw ArgumentError('Given contacts have to start with "mailto:"');
       }
-    });
+    }
 
     if (StringUtils.isNullOrEmpty(baseUrl)) {
       throw ArgumentError('baseUrl is missing');

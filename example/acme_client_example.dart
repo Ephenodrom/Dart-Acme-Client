@@ -48,7 +48,7 @@ void main(List<String> args) async {
   }
 
   var authValid = await client.validate(auth.first.challenges!
-      .firstWhere((element) => element.type == VALIDATION_DNS));
+      .firstWhere((element) => element.type == validateDns));
 
   if (!authValid) {
     print('Authorization failed, exit');

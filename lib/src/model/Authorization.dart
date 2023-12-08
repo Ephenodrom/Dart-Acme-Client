@@ -33,7 +33,7 @@ class Authorization {
   Map<String, dynamic> toJson() => _$AuthorizationToJson(this);
 
   DnsDcvData getDnsDcvData() {
-    var keyAuthorization = getKeyAuthorizationForChallenge(VALIDATION_DNS);
+    var keyAuthorization = getKeyAuthorizationForChallenge(validateDns);
     var b = CryptoUtils.getHashPlain(
         Uint8List.fromList(keyAuthorization!.codeUnits));
     var value = base64Url.encode(b).replaceAll('=', '');
@@ -43,17 +43,17 @@ class Authorization {
           rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
           ttl: 300,
           data: value),
-      getChallengeByType(VALIDATION_DNS),
+      getChallengeByType(validateDns),
     );
   }
 
   HttpDcvData getHttpDcvData() {
-    var keyAuthorization = getKeyAuthorizationForChallenge(VALIDATION_HTTP);
+    var keyAuthorization = getKeyAuthorizationForChallenge(validationHttp);
     var token = keyAuthorization!.split('.').elementAt(0);
     return HttpDcvData(
       '${identifier!.value}/.well-known/acme-challenge/$token',
       keyAuthorization,
-      getChallengeByType(VALIDATION_HTTP),
+      getChallengeByType(validationHttp),
     );
   }
 
@@ -64,7 +64,7 @@ class Authorization {
   String? getKeyAuthorizationForChallenge(String type) {
     try {
       var chall = challenges!.firstWhere((element) => element.type == type);
-      var keyAuthorization = chall.token! + '.' + digest!;
+      var keyAuthorization = '${chall.token!}.${digest!}';
       return keyAuthorization;
     } on StateError {
       return null;
