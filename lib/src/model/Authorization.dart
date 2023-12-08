@@ -33,7 +33,7 @@ class Authorization {
   Map<String, dynamic> toJson() => _$AuthorizationToJson(this);
 
   DnsDcvData getDnsDcvData() {
-    var keyAuthorization = getKeyAuthorizationForChallenge(validateDns);
+    var keyAuthorization = getKeyAuthorizationForChallenge(VALIDATION_DNS);
     var b = CryptoUtils.getHashPlain(
         Uint8List.fromList(keyAuthorization!.codeUnits));
     var value = base64Url.encode(b).replaceAll('=', '');
@@ -43,17 +43,17 @@ class Authorization {
           rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
           ttl: 300,
           data: value),
-      getChallengeByType(validateDns),
+      getChallengeByType(VALIDATION_DNS),
     );
   }
 
   HttpDcvData getHttpDcvData() {
-    var keyAuthorization = getKeyAuthorizationForChallenge(validationHttp);
+    var keyAuthorization = getKeyAuthorizationForChallenge(VALIDATION_HTTP);
     var token = keyAuthorization!.split('.').elementAt(0);
     return HttpDcvData(
       '${identifier!.value}/.well-known/acme-challenge/$token',
       keyAuthorization,
-      getChallengeByType(validationHttp),
+      getChallengeByType(VALIDATION_HTTP),
     );
   }
 

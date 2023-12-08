@@ -112,7 +112,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       var orderUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -124,7 +124,7 @@ class AcmeClient {
       return newOrder;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[headerReplayNounce]!.first;
+      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
 
       return null;
     }
@@ -145,12 +145,12 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       var newOrder = Order.fromJson(response.data);
       return newOrder;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[headerReplayNounce]!.first;
+      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
 
       return null;
     }
@@ -195,7 +195,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
@@ -210,7 +210,7 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[headerReplayNounce]!.first;
+        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
         var auth = Authorization.fromJson(response.data);
         if (auth.status == 'valid') {
           return true;
@@ -241,7 +241,7 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[headerReplayNounce]!.first;
+        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
         var a = Authorization.fromJson(response.data);
         a.digest = AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem));
         for (var chall in a.challenges!) {
@@ -286,7 +286,7 @@ class AcmeClient {
         options: Options(headers: headers),
       );
       var persistent = Order.fromJson(response.data);
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       return persistent;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
@@ -320,7 +320,7 @@ class AcmeClient {
           b.clear();
         }
       }
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       return certs;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
@@ -388,7 +388,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       var accountUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -402,7 +402,7 @@ class AcmeClient {
       if (createIfnotExists) {
         // No account found, create one
         if (e.response!.statusCode == 400) {
-          nonce = e.response!.headers.map[headerReplayNounce]!.first;
+          nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
           return await createAccount();
         }
       }
@@ -431,7 +431,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[headerReplayNounce]!.first;
+      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       var accountUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -491,8 +491,8 @@ class AcmeClient {
   ///
   Future<String?> _getNonce() async {
     var response = await Dio().head(directories!.newNonce!);
-    if (response.headers.map.containsKey(headerReplayNounce)) {
-      return response.headers.map[headerReplayNounce]!.first;
+    if (response.headers.map.containsKey(HEADER_REPLAY_NONCE)) {
+      return response.headers.map[HEADER_REPLAY_NONCE]!.first;
     } else {
       return null;
     }
