@@ -272,26 +272,73 @@ class AcmeClient {
   ///
   /// RFC : <https://datatracker.ietf.org/doc/html/rfc8555#page-47>
   ///
-  Future<Order?> finalizeOrder(Order order, String csr) async {
+  Future<Order?> finalizeOrder(Order order, String csr,
+      {int retries = 5}) async {
     var transformedCsr = AcmeUtils.formatCsrBase64Url(csr);
-    var jws = await _createJWS(order.finalize!, useKid: true, payload: {
-      'csr': transformedCsr,
-    });
-    var body = json.encode(jws.toJson());
-    var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
-        order.finalize!,
-        data: body,
-        options: Options(headers: headers),
-      );
-      var persistent = Order.fromJson(response.data);
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      Order? persistent;
+      var firstpass = true;
+      Results results;
+      do {
+        if (firstpass) {
+          results = await _finalizeOrder(order, transformedCsr);
+        } else {
+          results = await _retry(order, transformedCsr);
+        }
+        firstpass = false;
+        retries--;
+
+        /// the CA was stilling processing the order
+      } while (results.response.data['status'] == 'processing' && retries > 0);
+
+      if (results.response.data['status'] != 'valid') {
+        persistent = null;
+      } else {
+        persistent = results.order;
+      }
       return persistent;
     } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
     return null;
+  }
+
+  Future<Results> _finalizeOrder(Order order, String transformedCsr) async {
+    return _fetchOrder(order.finalize!, transformedCsr);
+  }
+
+  /// If the order was in a state of 'processing' when we called finalize
+  /// we need to retry fetching the order.
+  Future<Results> _retry(Order order, String transformedCsr) async {
+    /// If we are retrying then delay
+    await Future.delayed(Duration(seconds: 4), () {});
+
+    // return _fetchOrder(order.orderUrl!, transformedCsr);
+
+    final response = await Dio().get(
+      order.orderUrl!,
+    );
+    final persistent = Order.fromJson(response.data);
+
+    return Results(response, persistent);
+  }
+
+  Future<Results> _fetchOrder(String url, String transformedCsr) async {
+    var jws = await _createJWS(url, useKid: true, payload: {
+      'csr': transformedCsr,
+    });
+    var body = json.encode(jws.toJson());
+    var headers = {'Content-Type': 'application/jose+json'};
+
+    final response = await Dio().post(
+      url,
+      data: body,
+      options: Options(headers: headers),
+    );
+    final persistent = Order.fromJson(response.data);
+    nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+
+    return Results(response, persistent);
   }
 
   ///
@@ -516,4 +563,10 @@ class AcmeClient {
       throw ArgumentError('Public key PEM is missing');
     }
   }
+}
+
+class Results {
+  Results(this.response, this.order);
+  Response response;
+  Order order;
 }
