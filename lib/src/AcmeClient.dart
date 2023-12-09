@@ -271,7 +271,10 @@ class AcmeClient {
   /// given [csr] in the payload. The given [csr] will be transformed in the necessary base64url encoding.
   ///
   /// RFC : <https://datatracker.ietf.org/doc/html/rfc8555#page-47>
-  ///
+  /// When attempting to finalize the order the CA may not immediately return
+  /// the certificate. In this case we will wait 4 seconds and try again
+  /// to fetch the certificate (url). This usually works on the first try but
+  /// we allow you to set the retry limit via [retries] which defaults to 5.
   Future<Order?> finalizeOrder(Order order, String csr,
       {int retries = 5}) async {
     var transformedCsr = AcmeUtils.formatCsrBase64Url(csr);
