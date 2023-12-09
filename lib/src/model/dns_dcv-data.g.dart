@@ -1,22 +1,20 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'HttpDcvData.dart';
+part of 'dns_dcv_data.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-HttpDcvData _$HttpDcvDataFromJson(Map<String, dynamic> json) => HttpDcvData(
-      json['fileName'] as String,
-      json['fileContent'] as String,
+DnsDcvData _$DnsDcvDataFromJson(Map<String, dynamic> json) => DnsDcvData(
+      RRecord.fromJson(json['rRecord'] as Map<String, dynamic>),
       Challenge.fromJson(json['challenge'] as Map<String, dynamic>),
     )..type = _$enumDecode(_$DcvTypeEnumMap, json['type']);
 
-Map<String, dynamic> _$HttpDcvDataToJson(HttpDcvData instance) =>
+Map<String, dynamic> _$DnsDcvDataToJson(DnsDcvData instance) =>
     <String, dynamic>{
       'type': _$DcvTypeEnumMap[instance.type],
-      'fileName': instance.fileName,
-      'fileContent': instance.fileContent,
+      'rRecord': instance.rRecord,
       'challenge': instance.challenge,
     };
 

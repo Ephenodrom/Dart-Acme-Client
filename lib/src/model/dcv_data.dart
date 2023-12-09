@@ -1,4 +1,4 @@
-import 'package:acme_client/src/model/DcvType.dart';
+import 'package:acme_client/src/model/dcv_type.dart';
 
 class DcvData {
   DcvType type;

@@ -1,4 +1,4 @@
-import 'package:acme_client/src/AcmeUtils.dart';
+import 'package:acme_client/src/acme_util.dart';
 import 'package:jose/jose.dart';
 import 'package:test/test.dart';
 

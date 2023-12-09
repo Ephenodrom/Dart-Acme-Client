@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'Identifiers.g.dart';
+part 'identifiers.g.dart';
 
 @JsonSerializable(includeIfNull: false)
 class Identifiers {

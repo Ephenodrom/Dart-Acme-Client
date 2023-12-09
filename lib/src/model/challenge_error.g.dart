@@ -1,17 +1,19 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'Identifiers.dart';
+part of 'challenge_error.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-Identifiers _$IdentifiersFromJson(Map<String, dynamic> json) => Identifiers(
+ChallengeError _$ChallengeErrorFromJson(Map<String, dynamic> json) =>
+    ChallengeError(
+      detail: json['detail'] as String?,
       type: json['type'] as String?,
-      value: json['value'] as String?,
+      status: json['status'] as int?,
     );
 
-Map<String, dynamic> _$IdentifiersToJson(Identifiers instance) {
+Map<String, dynamic> _$ChallengeErrorToJson(ChallengeError instance) {
   final val = <String, dynamic>{};
 
   void writeNotNull(String key, dynamic value) {
@@ -21,6 +23,7 @@ Map<String, dynamic> _$IdentifiersToJson(Identifiers instance) {
   }
 
   writeNotNull('type', instance.type);
-  writeNotNull('value', instance.value);
+  writeNotNull('detail', instance.detail);
+  writeNotNull('status', instance.status);
   return val;
 }

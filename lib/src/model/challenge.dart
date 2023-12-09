@@ -1,7 +1,7 @@
-import 'package:acme_client/src/model/ChallengeError.dart';
+import 'package:acme_client/src/model/challenge_error.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'Challenge.g.dart';
+part 'challenge.g.dart';
 
 @JsonSerializable(includeIfNull: false, explicitToJson: true)
 class Challenge {

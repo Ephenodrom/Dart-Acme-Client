@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'AcmeDirectories.dart';
+part of 'acme_directories.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator

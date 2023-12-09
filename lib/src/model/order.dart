@@ -1,7 +1,7 @@
-import 'package:acme_client/src/model/Identifiers.dart';
+import 'package:acme_client/src/model/identifiers.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'Order.g.dart';
+part 'order.g.dart';
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class Order {
