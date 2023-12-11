@@ -1,14 +1,14 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/Constants.dart';
-import 'package:acme_client/src/AcmeUtils.dart';
-import 'package:acme_client/src/model/Account.dart';
-import 'package:acme_client/src/model/AcmeDirectories.dart';
-import 'package:acme_client/src/model/Authorization.dart';
-import 'package:acme_client/src/model/Challenge.dart';
-import 'package:acme_client/src/model/DnsDcvData.dart';
-import 'package:acme_client/src/model/HttpDcvData.dart';
-import 'package:acme_client/src/model/Order.dart';
+import 'package:acme_client/src/acme_util.dart';
+import 'package:acme_client/src/constants.dart';
+import 'package:acme_client/src/model/account.dart';
+import 'package:acme_client/src/model/acme_directories.dart';
+import 'package:acme_client/src/model/authorization.dart';
+import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/dns_dcv_data.dart';
+import 'package:acme_client/src/model/http_dcv_data.dart';
+import 'package:acme_client/src/model/order.dart';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:jose/jose.dart';
@@ -122,7 +122,7 @@ class AcmeClient {
       var newOrder = Order.fromJson(response.data);
       newOrder.orderUrl = orderUrl;
       return newOrder;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
       nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
 
@@ -148,7 +148,7 @@ class AcmeClient {
       nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       var newOrder = Order.fromJson(response.data);
       return newOrder;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
       nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
 
@@ -160,18 +160,18 @@ class AcmeClient {
   /// Fetches a list of current running orders
   ///
   Future<List<String>?> orderList() async {
-    var jws = await _createJWS(account!.accountURL! + '/orders', useKid: true);
+    var jws = await _createJWS('${account!.accountURL!}/orders', useKid: true);
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
       var response = await Dio().post(
-        account!.accountURL! + '/orders',
+        '${account!.accountURL!}/orders',
         data: body,
         options: Options(headers: headers),
       );
       print(response.data);
       return <String>[];
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
       return null;
     }
@@ -184,9 +184,8 @@ class AcmeClient {
   ///
   Future<bool> validate(Challenge challenge, {int maxAttempts = 15}) async {
     var jws = await _createJWS(challenge.url!, useKid: true, payload: {
-      'keyAuthorization': challenge.token! +
-          '.' +
-          AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem))
+      'keyAuthorization':
+          '${challenge.token!}.${AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem))}'
     });
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
@@ -197,7 +196,7 @@ class AcmeClient {
         options: Options(headers: headers),
       );
       nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
 
@@ -216,7 +215,7 @@ class AcmeClient {
         if (auth.status == 'valid') {
           return true;
         }
-      } on DioError catch (e) {
+      } on DioException catch (e) {
         print(e.response!.data!.toString());
       }
       maxAttempts--;
@@ -249,7 +248,7 @@ class AcmeClient {
           chall.authorizationUrl = authUrl;
         }
         auth.add(a);
-      } on DioError catch (e) {
+      } on DioException catch (e) {
         print(e.response!.data!.toString());
       }
     }
@@ -272,26 +271,77 @@ class AcmeClient {
   /// given [csr] in the payload. The given [csr] will be transformed in the necessary base64url encoding.
   ///
   /// RFC : <https://datatracker.ietf.org/doc/html/rfc8555#page-47>
-  ///
-  Future<Order?> finalizeOrder(Order order, String csr) async {
+  /// When attempting to finalize the order the CA may not immediately return
+  /// the certificate. In this case we will wait 4 seconds and try again
+  /// to fetch the certificate (url). This usually works on the first try but
+  /// we allow you to set the retry limit via [retries] which defaults to 5.
+  Future<Order?> finalizeOrder(Order order, String csr,
+      {int retries = 5}) async {
     var transformedCsr = AcmeUtils.formatCsrBase64Url(csr);
-    var jws = await _createJWS(order.finalize!, useKid: true, payload: {
+    try {
+      Order? persistent;
+      var firstpass = true;
+      Results results;
+      do {
+        if (firstpass) {
+          results = await _finalizeOrder(order, transformedCsr);
+        } else {
+          results = await _retry(order, transformedCsr);
+        }
+        firstpass = false;
+        retries--;
+
+        /// the CA was stilling processing the order
+      } while (results.response.data['status'] == 'processing' && retries > 0);
+
+      if (results.response.data['status'] != 'valid') {
+        persistent = null;
+      } else {
+        persistent = results.order;
+      }
+      return persistent;
+    } on DioException catch (e) {
+      print(e.response!.data!.toString());
+    }
+    return null;
+  }
+
+  Future<Results> _finalizeOrder(Order order, String transformedCsr) async {
+    return _fetchOrder(order.finalize!, transformedCsr);
+  }
+
+  /// If the order was in a state of 'processing' when we called finalize
+  /// we need to retry fetching the order.
+  Future<Results> _retry(Order order, String transformedCsr) async {
+    /// If we are retrying then delay
+    await Future.delayed(Duration(seconds: 4), () {});
+
+    // return _fetchOrder(order.orderUrl!, transformedCsr);
+
+    final response = await Dio().get(
+      order.orderUrl!,
+    );
+    final persistent = Order.fromJson(response.data);
+
+    return Results(response, persistent);
+  }
+
+  Future<Results> _fetchOrder(String url, String transformedCsr) async {
+    var jws = await _createJWS(url, useKid: true, payload: {
       'csr': transformedCsr,
     });
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
-    try {
-      var response = await Dio().post(
-        order.finalize!,
-        data: body,
-        options: Options(headers: headers),
-      );
-      var persistent = Order.fromJson(response.data);
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-      return persistent;
-    } on DioError catch (e) {
-      print(e.response!.data!.toString());
-    }
+
+    final response = await Dio().post(
+      url,
+      data: body,
+      options: Options(headers: headers),
+    );
+    final persistent = Order.fromJson(response.data);
+    nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+
+    return Results(response, persistent);
   }
 
   ///
@@ -322,9 +372,10 @@ class AcmeClient {
       }
       nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
       return certs;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.response!.data!.toString());
     }
+    return null;
   }
 
   ///
@@ -358,7 +409,7 @@ class AcmeClient {
             return true;
           }
         }
-      } on DioError {
+      } on DioException {
         // Do nothing
       }
       await Future.delayed(Duration(seconds: 4));
@@ -397,7 +448,7 @@ class AcmeClient {
       var account = Account.fromJson(response.data);
       account.accountURL = accountUrl;
       return account;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       if (createIfnotExists) {
         // No account found, create one
         if (e.response!.statusCode == 400) {
@@ -440,7 +491,7 @@ class AcmeClient {
       var account = Account.fromJson(response.data);
       account.accountURL = accountUrl;
       return account;
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       print(e.message);
       // TODO Handle error
       return null;
@@ -481,7 +532,7 @@ class AcmeClient {
   /// Fetches the directories from the ACME server
   ///
   Future<AcmeDirectories> _getDirectories() async {
-    var response = await Dio().get(baseUrl + '/directory');
+    var response = await Dio().get('$baseUrl/directory');
     return AcmeDirectories.fromJson(response.data);
   }
 
@@ -501,11 +552,11 @@ class AcmeClient {
   /// Validates the client data. Throws an [ArgumentError] if values are missing or incorrect.
   ///
   void validateData() {
-    contacts.forEach((element) {
+    for (var element in contacts) {
       if (!element.startsWith('mailto')) {
         throw ArgumentError('Given contacts have to start with "mailto:"');
       }
-    });
+    }
 
     if (StringUtils.isNullOrEmpty(baseUrl)) {
       throw ArgumentError('baseUrl is missing');
@@ -515,4 +566,10 @@ class AcmeClient {
       throw ArgumentError('Public key PEM is missing');
     }
   }
+}
+
+class Results {
+  Results(this.response, this.order);
+  Response response;
+  Order order;
 }

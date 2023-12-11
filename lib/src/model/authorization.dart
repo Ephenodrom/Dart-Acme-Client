@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:acme_client/src/Constants.dart';
-import 'package:acme_client/src/model/Challenge.dart';
-import 'package:acme_client/src/model/DnsDcvData.dart';
-import 'package:acme_client/src/model/HttpDcvData.dart';
-import 'package:acme_client/src/model/Identifiers.dart';
+import 'package:acme_client/src/constants.dart';
+import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/dns_dcv_data.dart';
+import 'package:acme_client/src/model/http_dcv_data.dart';
+import 'package:acme_client/src/model/identifiers.dart';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'Authorization.g.dart';
+part 'authorization.g.dart';
 
 @JsonSerializable(includeIfNull: false, explicitToJson: true)
 class Authorization {
@@ -64,7 +64,7 @@ class Authorization {
   String? getKeyAuthorizationForChallenge(String type) {
     try {
       var chall = challenges!.firstWhere((element) => element.type == type);
-      var keyAuthorization = chall.token! + '.' + digest!;
+      var keyAuthorization = '${chall.token!}.${digest!}';
       return keyAuthorization;
     } on StateError {
       return null;

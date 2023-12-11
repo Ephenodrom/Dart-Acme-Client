@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'AcmeDirectories.g.dart';
+part 'acme_directories.g.dart';
 
 @JsonSerializable()
 class AcmeDirectories {

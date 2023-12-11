@@ -1,7 +1,7 @@
-import 'package:acme_client/src/AcmeUtils.dart';
-import 'package:acme_client/src/model/Authorization.dart';
-import 'package:acme_client/src/model/Challenge.dart';
-import 'package:acme_client/src/model/Identifiers.dart';
+import 'package:acme_client/src/acme_util.dart';
+import 'package:acme_client/src/model/authorization.dart';
+import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/identifiers.dart';
 import 'package:jose/jose.dart';
 import 'package:test/test.dart';
 

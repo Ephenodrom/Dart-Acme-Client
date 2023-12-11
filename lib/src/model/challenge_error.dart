@@ -1,12 +1,12 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'ChallengeError.g.dart';
+part 'challenge_error.g.dart';
 
 @JsonSerializable(includeIfNull: false, explicitToJson: true)
 class ChallengeError {
   String? type;
   String? detail;
-  String? status;
+  int? status;
 
   ChallengeError({this.detail, this.type, this.status});
 

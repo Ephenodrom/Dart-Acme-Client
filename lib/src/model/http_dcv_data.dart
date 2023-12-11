@@ -1,9 +1,9 @@
-import 'package:acme_client/src/model/Challenge.dart';
-import 'package:acme_client/src/model/DcvData.dart';
-import 'package:acme_client/src/model/DcvType.dart';
+import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/dcv_data.dart';
+import 'package:acme_client/src/model/dcv_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'HttpDcvData.g.dart';
+part 'http_dcv_data.g.dart';
 
 @JsonSerializable(includeIfNull: false)
 class HttpDcvData extends DcvData {

@@ -1,19 +1,19 @@
 name: acme_client
-description: ACME client written in Dart
-version: 1.2.0
+description: ACME client which allows you to obtain a HTTPS Certificate from any ACME CA such as Lets Encrypt.
+version: 1.3.0
 homepage: https://github.com/Ephenodrom/Dart-Acme-Client
 
-environment:
+environment: 
   sdk: '>=2.12.0 <4.0.0'
 
-dependencies:
+dependencies: 
   basic_utils: ^5.5.4
   json_annotation: ^4.1.0
   dio: ^5.0.0
   jose: ^0.3.2
-
-dev_dependencies:
-  lints: ^2.0.1
+  
+dev_dependencies: 
+  lints: ^3.0.0
   test: ^1.16.0
   build_runner: ^2.3.0
   json_serializable: ^6.6.1

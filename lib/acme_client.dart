@@ -1,18 +1,18 @@
 library acme_client;
 
 // MODELS
-export 'src/model/Account.dart';
-export 'src/model/AcmeDirectories.dart';
-export 'src/model/Authorization.dart';
-export 'src/model/Challenge.dart';
-export 'src/model/ChallengeError.dart';
-export 'src/model/DcvData.dart';
-export 'src/model/DnsDcvData.dart';
-export 'src/model/HttpDcvData.dart';
-export 'src/model/Identifiers.dart';
-export 'src/model/Order.dart';
+export 'src/model/account.dart';
+export 'src/model/acme_directories.dart';
+export 'src/model/authorization.dart';
+export 'src/model/challenge.dart';
+export 'src/model/challenge_error.dart';
+export 'src/model/dcv_data.dart';
+export 'src/model/dns_dcv_data.dart';
+export 'src/model/http_dcv_data.dart';
+export 'src/model/identifiers.dart';
+export 'src/model/order.dart';
 
 // CLIENT AND OTHER STUFF
-export 'src/AcmeClient.dart';
-export 'src/Constants.dart';
-export 'src/AcmeUtils.dart';
+export 'src/acme_client.dart';
+export 'src/constants.dart';
+export 'src/acme_util.dart';

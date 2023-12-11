@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'Authorization.dart';
+part of 'authorization.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator

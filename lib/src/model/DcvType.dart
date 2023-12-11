@@ -1,1 +1,0 @@
-enum DcvType { DNS, HTTP }

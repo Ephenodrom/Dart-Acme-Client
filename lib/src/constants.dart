@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 final String URL_NEW_NONCE = 'newNonce';
 final String URL_NEW_ORDER = 'newOrder';
 final String URL_REVOKE_CERT = 'revokeCert';

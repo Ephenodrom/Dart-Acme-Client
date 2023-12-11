@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:acme_client/src/AcmeClient.dart';
-import 'package:acme_client/src/Constants.dart';
-import 'package:acme_client/src/model/Identifiers.dart';
-import 'package:acme_client/src/model/Order.dart';
+import 'package:acme_client/src/acme_client.dart';
+import 'package:acme_client/src/constants.dart';
+import 'package:acme_client/src/model/identifiers.dart';
+import 'package:acme_client/src/model/order.dart';
 import 'package:basic_utils/basic_utils.dart';
 
 void main(List<String> args) async {

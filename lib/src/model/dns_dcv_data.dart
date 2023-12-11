@@ -1,10 +1,10 @@
-import 'package:acme_client/src/model/Challenge.dart';
-import 'package:acme_client/src/model/DcvData.dart';
-import 'package:acme_client/src/model/DcvType.dart';
+import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/dcv_data.dart';
+import 'package:acme_client/src/model/dcv_type.dart';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'DnsDcvData.g.dart';
+part 'dns_dcv-data.g.dart';
 
 @JsonSerializable(includeIfNull: false)
 class DnsDcvData extends DcvData {
