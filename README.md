@@ -4,22 +4,24 @@ An ACME V2 compatible client written in Dart.
 
 ## Table of Contents
 
-1. [Preamble](#preamble)
-2. [Install](#install)
-   * [pubspec.yaml](#pubspec.yaml)
-3. [Import](#import)
-4. [Acme Client](#acme-client)
-   * [Client Setup](#client-setup)
-5. [Applying for Certificate Issuance](#applying-for-certificate-issuance)
-   * [Place Prder](#client-setup)
-   * [Fetch Authorization Data](#fetch-authorization-data)
-   * [Get Challenge For Authorization](#get-challange-for-authorization)
-   * [Self Test](#self-test)
-   * [Trigger Validation](#trigger-validation)
-   * [Finalize Order](#finalize-order)
-   * [Fetch Certificate](#fetch-certificate)
-6. [Changelog](#changelog)
-7. [Copyright and license](#copyright-and-license)
+- [Dart Acme Client](#dart-acme-client)
+  - [Table of Contents](#table-of-contents)
+  - [Preamble](#preamble)
+  - [Install](#install)
+    - [pubspec.yaml](#pubspecyaml)
+  - [Import](#import)
+  - [Acme Client](#acme-client)
+    - [Client Setup](#client-setup)
+  - [Applying for Certificate Issuance](#applying-for-certificate-issuance)
+    - [Place Order](#place-order)
+    - [Fetch Authorization Data](#fetch-authorization-data)
+    - [Get Challenge For Authorization](#get-challenge-for-authorization)
+    - [Self Test](#self-test)
+    - [Trigger Validation](#trigger-validation)
+    - [Finalize Order](#finalize-order)
+    - [Fetch Certificate](#fetch-certificate)
+  - [Changelog](#changelog)
+  - [Copyright and license](#copyright-and-license)
 
 ## Preamble
 
@@ -35,7 +37,7 @@ Update pubspec.yaml and add the following line to your dependencies.
 
 ```yaml
 dependencies:
-  acme_client: ^1.1.0
+  acme_client: ^1.3.0
 ```
 
 ## Import
@@ -64,11 +66,11 @@ Create a new client by calling the constructor and pass the appropriate paramete
   );
 ```
 
-* baseUrl = The base url of the acme server.
-* privateKeyPem = The private key in PEM format.
-* publicKeyPem  = The public key in PEM format.
-* acceptTerms = Accept terms and condition while creating / fetching an account.
-* contacts = A list of email addresses. Each address should have the format 'mailto:jon@doe.com'.
+- baseUrl = The base url of the acme server.
+- privateKeyPem = The private key in PEM format.
+- publicKeyPem  = The public key in PEM format.
+- acceptTerms = Accept terms and condition while creating / fetching an account.
+- contacts = A list of email addresses. Each address should have the format `mailto:jon@doe.com`.
 
 **Note**: If you want to create a RSA/ECC key pair with Dart, take a look at the [Basic Utils](https://github.com/Ephenodrom/Dart-Basic-Utils) Package. The X509Utils and CryptoUtils, contain everything needed for creating a key pair and formating it to PEM.
 
