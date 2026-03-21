@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0] - 2023-12-12
+
+* Reformated file names to snake case (PR #8 and #11)
+* Fixed linter errors (PR #8)
+* Changed type of status from strin to int? to fix a challange error (#7)
+
 ## [1.2.0] - 2023-06-29
 
 * Update dependencies
