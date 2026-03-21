@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:acme_client/src/acme_client.dart';
-import 'package:acme_client/src/constants.dart';
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/model/order.dart';
+import 'package:acme_client/acme_client.dart';
 import 'package:basic_utils/basic_utils.dart';
 
 void main(List<String> args) async {
@@ -35,9 +32,9 @@ void main(List<String> args) async {
   var newOrder = await client.order(order);
 
   print('Fetch authorization data for order');
-  var auth = await client.getAuthorization(newOrder!);
+  var auth = await client.getAuthorization(newOrder);
   print('Place the following DNS record in the corresponding zone file:');
-  print(DnsUtils.toBind(auth!.first.getDnsDcvData().rRecord));
+  print(DnsUtils.toBind(auth.first.getDnsDcvData().rRecord));
   print('Press any key if you are ready to trigger the challenge check');
   stdin.readLineSync(encoding: utf8);
 
@@ -65,6 +62,6 @@ void main(List<String> args) async {
 
   var persistent = await client.finalizeOrder(newOrder, csr);
 
-  var certs = await client.getCertificate(persistent!);
+  var certs = await client.getCertificate(persistent);
   print(certs);
 }

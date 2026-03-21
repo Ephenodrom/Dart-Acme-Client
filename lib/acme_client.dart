@@ -14,5 +14,7 @@ export 'src/model/order.dart';
 
 // CLIENT AND OTHER STUFF
 export 'src/acme_client.dart';
+export 'src/acme_client_exception.dart';
+export 'src/acme_logger.dart';
 export 'src/constants.dart';
 export 'src/acme_util.dart';
