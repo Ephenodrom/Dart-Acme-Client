@@ -3,10 +3,10 @@ description: ACME client which allows you to obtain a HTTPS Certificate from any
 version: 2.0.0
 homepage: https://github.com/Ephenodrom/Dart-Acme-Client
 environment: 
-  sdk: '>=2.12.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
 dependencies: 
   basic_utils: ^5.5.4
-  json_annotation: ^4.1.0
+  json_annotation: ^4.11.0
   dio: ^5.0.0
   jose: ^0.3.5
 dev_dependencies: 

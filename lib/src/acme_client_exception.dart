@@ -29,203 +29,135 @@ class AcmeClientException implements Exception {
 
 class AcmeConfigurationException extends AcmeClientException {
   const AcmeConfigurationException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeDirectoryException extends AcmeClientException {
   const AcmeDirectoryException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeNonceException extends AcmeClientException {
   const AcmeNonceException(
-    String message, {
+    super.message, {
     required this.reason,
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 
   final AcmeNonceExceptionReason reason;
 }
 
 class AcmeJwsException extends AcmeClientException {
   const AcmeJwsException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeAccountKeyDigestException extends AcmeClientException {
   const AcmeAccountKeyDigestException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeAccountException extends AcmeClientException {
   const AcmeAccountException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeOrderException extends AcmeClientException {
   const AcmeOrderException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeAuthorizationException extends AcmeClientException {
   const AcmeAuthorizationException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
+}
+
+class AcmeDnsPersistException extends AcmeClientException {
+  const AcmeDnsPersistException(
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeValidationException extends AcmeClientException {
   const AcmeValidationException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }
 
 class AcmeCertificateException extends AcmeClientException {
   const AcmeCertificateException(
-    String message, {
-    Uri? uri,
-    int? statusCode,
-    String? type,
-    String? detail,
-    Object? rawBody,
-    Object? cause,
-  }) : super(
-          message,
-          uri: uri,
-          statusCode: statusCode,
-          type: type,
-          detail: detail,
-          rawBody: rawBody,
-          cause: cause,
-        );
+    super.message, {
+    super.uri,
+    super.statusCode,
+    super.type,
+    super.detail,
+    super.rawBody,
+    super.cause,
+  });
 }

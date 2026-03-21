@@ -80,4 +80,25 @@ void main() {
       throwsA(isA<AcmeAccountKeyDigestException>()),
     );
   });
+
+  test('validate rejects malformed dns-persist-01 challenges', () {
+    final client = AcmeClient(
+      'https://acme-staging-v02.api.letsencrypt.org',
+      'private',
+      'public',
+      true,
+      ['mailto:admin@example.com'],
+    );
+
+    final challenge = Challenge(
+      type: VALIDATION_DNS_PERSIST,
+      url: 'https://example.com/acme/challenge/1',
+      authorizationUrl: 'https://example.com/acme/authz/1',
+    );
+
+    expect(
+      () => client.validate(challenge),
+      throwsA(isA<AcmeDnsPersistException>()),
+    );
+  });
 }

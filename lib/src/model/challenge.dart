@@ -7,11 +7,21 @@ part 'challenge.g.dart';
 class Challenge {
   String? type;
   String? url;
+  String? status;
   String? token;
+  @JsonKey(name: 'issuer-domain-names')
+  List<String>? issuerDomainNames;
   String? authorizationUrl;
   ChallengeError? error;
 
-  Challenge({this.token, this.type, this.url, this.authorizationUrl});
+  Challenge({
+    this.token,
+    this.type,
+    this.url,
+    this.status,
+    this.issuerDomainNames,
+    this.authorizationUrl,
+  });
 
   factory Challenge.fromJson(Map<String, dynamic> json) =>
       _$ChallengeFromJson(json);

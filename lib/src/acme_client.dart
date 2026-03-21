@@ -10,8 +10,10 @@ import 'package:acme_client/src/model/authorization.dart';
 import 'package:acme_client/src/model/challenge.dart';
 import 'package:acme_client/src/model/challenge_error.dart';
 import 'package:acme_client/src/model/dns_dcv_data.dart';
+import 'package:acme_client/src/model/dns_persist_dcv_data.dart';
 import 'package:acme_client/src/model/http_dcv_data.dart';
 import 'package:acme_client/src/model/order.dart';
+import 'package:acme_client/src/payloads/payloads.dart';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:jose/jose.dart';
@@ -20,6 +22,8 @@ import 'package:jose/jose.dart';
 /// The ACME Client
 ///
 class AcmeClient {
+  final Dio _dio;
+
   ///
   /// The base url of the ACME server
   ///
@@ -75,6 +79,9 @@ class AcmeClient {
   /// * [acceptTerms] = Accept terms and condition while creating / fetching an account
   /// * [contacts] = A list of email addresses
   /// * [createIfNotExists] = Defines whether to create an account if none exists
+  /// * [dio] = Optional advanced transport override. Most production callers
+  ///   should not pass this. It is mainly intended for tests or special
+  ///   environments such as local Pebble, custom TLS trust, or proxies.
   ///
   AcmeClient(
     this.baseUrl,
@@ -84,7 +91,8 @@ class AcmeClient {
     this.contacts, {
     this.createIfNotExists = true,
     this.logger,
-  });
+    Dio? dio,
+  }) : _dio = dio ?? Dio();
 
   ///
   /// Will initate the ACME client.
@@ -122,7 +130,7 @@ class AcmeClient {
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         directories!.newOrder!,
         data: body,
         options: Options(headers: headers),
@@ -170,7 +178,7 @@ class AcmeClient {
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         order.orderUrl!,
         data: body,
         options: Options(headers: headers),
@@ -210,7 +218,7 @@ class AcmeClient {
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         url,
         data: body,
         options: Options(headers: headers),
@@ -255,18 +263,17 @@ class AcmeClient {
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.5.1
   ///
   /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for challenge validation')
+  /// @Throwing(AcmeDnsPersistException, reason: 'the dns-persist-01 challenge data was incomplete or malformed')
   /// @Throwing(AcmeJwsException, reason: 'challenge validation requests could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated during challenge validation')
   /// @Throwing(AcmeValidationException, reason: 'the ACME challenge could not be triggered, polled, or completed successfully')
   Future<bool> validate(Challenge challenge, {int maxAttempts = 15}) async {
-    final keyDigest = _getAccountKeyDigest();
     var jws = await _createJWS(challenge.url!,
-        useKid: true,
-        payload: {'keyAuthorization': '${challenge.token!}.$keyDigest'});
+        useKid: true, payload: _buildValidationPayload(challenge));
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         challenge.url!,
         data: body,
         options: Options(headers: headers),
@@ -296,7 +303,7 @@ class AcmeClient {
       var body = json.encode(jws.toJson());
 
       try {
-        var response = await Dio().post(
+        var response = await _dio.post(
           challenge.authorizationUrl!,
           data: body,
           options: Options(headers: headers),
@@ -364,7 +371,7 @@ class AcmeClient {
       var body = json.encode(jws.toJson());
       var headers = {'Content-Type': 'application/jose+json'};
       try {
-        var response = await Dio().post(
+        var response = await _dio.post(
           authUrl,
           data: body,
           options: Options(headers: headers),
@@ -396,6 +403,33 @@ class AcmeClient {
       }
     }
     return auth;
+  }
+
+  /// Fetches the authorization for a specific identifier and challenge type.
+  ///
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for authorization processing')
+  /// @Throwing(AcmeAuthorizationException, reason: 'the ACME server rejected or failed to return authorization data, or no matching authorization was found')
+  /// @Throwing(AcmeJwsException, reason: 'authorization lookup requests could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching authorizations')
+  Future<Authorization> getAuthorizationForIdentifier(
+    Order order,
+    String identifier, {
+    String challengeType = VALIDATION_DNS_PERSIST,
+  }) async {
+    final authorizations = await getAuthorization(order);
+
+    for (final authorization in authorizations) {
+      if (authorization.identifier?.value == identifier &&
+          authorization.hasChallengeType(challengeType)) {
+        return authorization;
+      }
+    }
+
+    throw AcmeAuthorizationException(
+      'No ACME authorization was found for the requested identifier and challenge type',
+      detail: '$identifier ($challengeType)',
+      rawBody: authorizations.map((auth) => auth.toJson()).toList(),
+    );
   }
 
   ///
@@ -469,7 +503,7 @@ class AcmeClient {
     await Future.delayed(Duration(seconds: 4), () {});
 
     try {
-      final response = await Dio().get(order.orderUrl!);
+      final response = await _dio.get(order.orderUrl!);
       final persistent = Order.fromJson(response.data);
       return Results(response, persistent);
     } on DioException catch (e, s) {
@@ -496,14 +530,13 @@ class AcmeClient {
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while submitting a finalized order')
   /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected the finalized order submission')
   Future<Results> _fetchOrder(String url, String transformedCsr) async {
-    var jws = await _createJWS(url, useKid: true, payload: {
-      'csr': transformedCsr,
-    });
+    var jws = await _createJWS(url,
+        useKid: true, payload: FinalizeOrderPayload(transformedCsr));
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
 
     try {
-      final response = await Dio().post(
+      final response = await _dio.post(
         url,
         data: body,
         options: Options(headers: headers),
@@ -543,7 +576,7 @@ class AcmeClient {
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         order.certificate!,
         data: body,
         options: Options(headers: headers),
@@ -604,12 +637,35 @@ class AcmeClient {
   }
 
   ///
+  /// A test whether the persistent DNS record is placed or not. Uses the Google
+  /// DNS JSON API to check the corresponding zone file.
+  ///
+  Future<bool> selfDNSPersistTest(DnsPersistDcvData data,
+      {int maxAttempts = 15}) async {
+    for (var i = 0; i < maxAttempts; i++) {
+      var records = await DnsUtils.lookupRecord(
+          data.rRecord.name, RRecordType.TXT,
+          provider: DnsApiProvider.GOOGLE);
+      if (records != null &&
+          records.isNotEmpty &&
+          records.any((record) => record.data == data.rRecord.data)) {
+        _log(AcmeLogLevel.debug, 'Found persistent DNS record via Google DNS');
+        return true;
+      }
+      _log(AcmeLogLevel.debug,
+          'Persistent DNS record not visible via Google DNS yet');
+      await Future.delayed(Duration(seconds: 4));
+    }
+    return false;
+  }
+
+  ///
   /// A test whether the HTTP token is placed or not. Uses a simple HTTP GET request to check for the corresponding file on the server.
   ///
   Future<bool> selfHttpTest(HttpDcvData data, {int maxAttempts = 15}) async {
     for (var i = 0; i < maxAttempts; i++) {
       try {
-        var response = await Dio().get(data.fileName);
+        var response = await _dio.get(data.fileName);
         if (response.data is String) {
           if (response.data(String) == data.fileContent) {
             return true;
@@ -637,17 +693,18 @@ class AcmeClient {
   /// @Throwing(AcmeJwsException, reason: 'account lookup request could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while looking up the account')
   Future<Account> getAccount({bool createIfnotExists = true}) async {
-    var payload = {
-      'onlyReturnExisting': true,
-      'termsOfServiceAgreed': acceptTerms,
-      'contact': contacts
-    };
-
-    var jws = await _createJWS(directories!.newAccount!, payload: payload);
+    var jws = await _createJWS(
+      directories!.newAccount!,
+      payload: AccountRequestPayload(
+        onlyReturnExisting: true,
+        termsOfServiceAgreed: acceptTerms,
+        contact: contacts,
+      ),
+    );
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         directories!.newAccount!,
         data: body,
         options: Options(headers: headers),
@@ -685,17 +742,18 @@ class AcmeClient {
   /// @Throwing(AcmeJwsException, reason: 'account creation request could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while creating the account')
   Future<Account> createAccount() async {
-    var payload = {
-      'onlyReturnExisting': false,
-      'termsOfServiceAgreed': acceptTerms,
-      'contact': contacts
-    };
-
-    var jws = await _createJWS(directories!.newAccount!, payload: payload);
+    var jws = await _createJWS(
+      directories!.newAccount!,
+      payload: AccountRequestPayload(
+        onlyReturnExisting: false,
+        termsOfServiceAgreed: acceptTerms,
+        contact: contacts,
+      ),
+    );
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
-      var response = await Dio().post(
+      var response = await _dio.post(
         directories!.newAccount!,
         data: body,
         options: Options(headers: headers),
@@ -728,7 +786,7 @@ class AcmeClient {
   /// @Throwing(AcmeJwsException, reason: 'JSON Web Signature creation failed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained before creating the JSON Web Signature')
   Future<JsonWebSignature> _createJWS(String url,
-      {bool useKid = false, Map<String, dynamic>? payload}) async {
+      {bool useKid = false, Object? payload}) async {
     nonce ??= await _getNonce();
     try {
       var builder = JsonWebSignatureBuilder();
@@ -738,6 +796,8 @@ class AcmeClient {
 
       if (payload == null) {
         builder.stringContent = '';
+      } else if (payload is JwsPayload) {
+        builder.stringContent = payload.stringContent;
       } else {
         builder.stringContent = json.encode(payload);
       }
@@ -803,7 +863,7 @@ class AcmeClient {
   /// @Throwing(AcmeDirectoryException, reason: 'the ACME directory endpoint could not be fetched or parsed')
   Future<AcmeDirectories> _getDirectories() async {
     try {
-      var response = await Dio().get('$baseUrl/directory');
+      var response = await _dio.get(_directoryUrl());
       return AcmeDirectories.fromJson(response.data);
     } on DioException catch (e, s) {
       throw _requestException<AcmeDirectoryException>(
@@ -824,13 +884,24 @@ class AcmeClient {
     }
   }
 
+  String _directoryUrl() {
+    final uri = Uri.parse(baseUrl);
+    if (uri.pathSegments.isNotEmpty) {
+      final lastSegment = uri.pathSegments.last;
+      if (lastSegment == 'dir' || lastSegment == 'directory') {
+        return baseUrl;
+      }
+    }
+    return '$baseUrl/directory';
+  }
+
   ///
   /// Fetches a new nonce from the ACME server
   ///
   /// @Throwing(AcmeNonceException, reason: 'the replay nonce request failed, returned no nonce, or returned multiple nonce values')
   Future<String> _getNonce() async {
     try {
-      var response = await Dio().head(directories!.newNonce!);
+      var response = await _dio.head(directories!.newNonce!);
       var replayNonce = _readReplayNonceHeader(
         response.headers,
         uri: Uri.tryParse(directories!.newNonce!),
@@ -884,6 +955,104 @@ class AcmeClient {
     if (StringUtils.isNullOrEmpty(publicKeyPem)) {
       throw const AcmeConfigurationException('Public key PEM is missing');
     }
+  }
+
+  /// @Throwing(AcmeDnsPersistException, reason: 'the dns-persist-01 challenge data was incomplete or malformed')
+  DnsPersistDcvData buildDnsPersistDcvData(
+    Authorization authorization, {
+    String? issuerDomainName,
+    String? policy,
+    DateTime? persistUntil,
+  }) {
+    late final Challenge challenge;
+    try {
+      challenge = authorization.getChallengeByType(VALIDATION_DNS_PERSIST);
+    } on StateError catch (e) {
+      throw AcmeDnsPersistException(
+        'ACME authorization does not include a dns-persist-01 challenge',
+        cause: e,
+      );
+    }
+    final identifier = authorization.identifier?.value;
+    final accountUrl = account?.accountURL;
+    final issuers = challenge.issuerDomainNames;
+
+    if (StringUtils.isNullOrEmpty(identifier)) {
+      throw const AcmeDnsPersistException(
+        'ACME authorization is missing an identifier for dns-persist-01',
+      );
+    }
+    if (StringUtils.isNullOrEmpty(accountUrl)) {
+      throw const AcmeDnsPersistException(
+        'ACME account URL is missing for dns-persist-01',
+      );
+    }
+    if (issuers == null || issuers.isEmpty) {
+      throw AcmeDnsPersistException(
+        'ACME dns-persist-01 challenge is missing issuer-domain-names',
+        uri: Uri.tryParse(challenge.url ?? challenge.authorizationUrl ?? ''),
+      );
+    }
+
+    final selectedIssuer = issuerDomainName ?? issuers.first;
+    if (!issuers.contains(selectedIssuer)) {
+      throw AcmeDnsPersistException(
+        'Requested issuer-domain-name is not offered by the ACME challenge',
+        uri: Uri.tryParse(challenge.url ?? challenge.authorizationUrl ?? ''),
+        detail: selectedIssuer,
+        rawBody: issuers,
+      );
+    }
+
+    final txtValue = _buildDnsPersistRecordValue(
+      issuerDomainName: selectedIssuer,
+      accountUri: accountUrl!,
+      policy: policy,
+      persistUntil: persistUntil,
+    );
+
+    return DnsPersistDcvData(
+      RRecord(
+        name: '_validation-persist.$identifier',
+        rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
+        ttl: 300,
+        data: txtValue,
+      ),
+      challenge,
+      issuerDomainName: selectedIssuer,
+      accountUri: accountUrl,
+      policy: policy,
+      persistUntil: persistUntil,
+    );
+  }
+
+  /// Fetches authorizations for an order and builds the persistent DNS record
+  /// data for the requested identifier.
+  ///
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for authorization processing')
+  /// @Throwing(AcmeAuthorizationException, reason: 'the ACME server rejected or failed to return authorization data, or no matching authorization was found')
+  /// @Throwing(AcmeDnsPersistException, reason: 'the dns-persist-01 challenge data was incomplete or malformed')
+  /// @Throwing(AcmeJwsException, reason: 'authorization lookup requests could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching authorizations')
+  Future<DnsPersistDcvData> getDnsPersistDcvDataForOrder(
+    Order order, {
+    required String identifier,
+    String? issuerDomainName,
+    String? policy,
+    DateTime? persistUntil,
+  }) async {
+    final authorization = await getAuthorizationForIdentifier(
+      order,
+      identifier,
+      challengeType: VALIDATION_DNS_PERSIST,
+    );
+
+    return buildDnsPersistDcvData(
+      authorization,
+      issuerDomainName: issuerDomainName,
+      policy: policy,
+      persistUntil: persistUntil,
+    );
   }
 
   Account _accountFromResponse(Response response) {
@@ -1115,6 +1284,64 @@ class AcmeClient {
         cause: e,
       );
     }
+  }
+
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for dns-01 or http-01 validation')
+  /// @Throwing(AcmeDnsPersistException, reason: 'the dns-persist-01 challenge data was incomplete or malformed')
+  /// @Throwing(AcmeValidationException, reason: 'the challenge type is unsupported or required validation data is missing')
+  ValidationPayload _buildValidationPayload(Challenge challenge) {
+    switch (challenge.type) {
+      case VALIDATION_DNS:
+      case VALIDATION_HTTP:
+        final token = challenge.token;
+        if (StringUtils.isNullOrEmpty(token)) {
+          throw AcmeValidationException(
+            'ACME challenge is missing a token',
+            uri:
+                Uri.tryParse(challenge.url ?? challenge.authorizationUrl ?? ''),
+          );
+        }
+        final keyDigest = _getAccountKeyDigest();
+        return KeyAuthorizationValidationPayload('$token.$keyDigest');
+      case VALIDATION_DNS_PERSIST:
+        if (challenge.issuerDomainNames == null ||
+            challenge.issuerDomainNames!.isEmpty) {
+          throw AcmeDnsPersistException(
+            'ACME dns-persist-01 challenge is missing issuer-domain-names',
+            uri:
+                Uri.tryParse(challenge.url ?? challenge.authorizationUrl ?? ''),
+          );
+        }
+        return const EmptyValidationPayload();
+      default:
+        throw AcmeValidationException(
+          'Unsupported ACME challenge type',
+          uri: Uri.tryParse(challenge.url ?? challenge.authorizationUrl ?? ''),
+          detail: challenge.type,
+        );
+    }
+  }
+
+  String _buildDnsPersistRecordValue({
+    required String issuerDomainName,
+    required String accountUri,
+    String? policy,
+    DateTime? persistUntil,
+  }) {
+    final parts = <String>[
+      issuerDomainName,
+      'accounturi=$accountUri',
+    ];
+
+    if (!StringUtils.isNullOrEmpty(policy)) {
+      parts.add('policy=$policy');
+    }
+    if (persistUntil != null) {
+      parts.add(
+          'persistUntil=${persistUntil.toUtc().millisecondsSinceEpoch ~/ 1000}');
+    }
+
+    return parts.join('; ');
   }
 }
 

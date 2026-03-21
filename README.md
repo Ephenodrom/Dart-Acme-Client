@@ -16,6 +16,7 @@ An ACME V2 compatible client written in Dart.
     - [Place Order](#place-order)
     - [Fetch Authorization Data](#fetch-authorization-data)
     - [Get Challenge For Authorization](#get-challenge-for-authorization)
+    - [dns-persist-01](#dns-persist-01)
     - [Self Test](#self-test)
     - [Trigger Validation](#trigger-validation)
     - [Finalize Order](#finalize-order)
@@ -66,11 +67,12 @@ Create a new client by calling the constructor and pass the appropriate paramete
   );
 ```
 
-- baseUrl = The base url of the acme server.
+- baseUrl = The base URL of the ACME server, or the full ACME directory URL such as Pebble's `https://localhost:14000/dir`.
 - privateKeyPem = The private key in PEM format.
 - publicKeyPem  = The public key in PEM format.
 - acceptTerms = Accept terms and condition while creating / fetching an account.
 - contacts = A list of email addresses. Each address should have the format `mailto:jon@doe.com`.
+- dio = Optional advanced transport override. Most production callers should not pass this. It is mainly useful for tests or special environments such as local Pebble, custom TLS trust, or proxies.
 
 **Note**: If you want to create a RSA/ECC key pair with Dart, take a look at the [Basic Utils](https://github.com/Ephenodrom/Dart-Basic-Utils) Package. The X509Utils and CryptoUtils, contain everything needed for creating a key pair and formating it to PEM.
 
@@ -115,6 +117,26 @@ For each returned authorization there are multiple challenges. You can use one o
   }
 ```
 
+### dns-persist-01
+
+If the ACME server offers `dns-persist-01`, use the client helper to build the
+TXT record from the active account binding. The client derives
+`accounturi=<account-url>` automatically from the current ACME account.
+
+```dart
+  var persistData = await client.getDnsPersistDcvDataForOrder(
+    newOrder,
+    identifier: 'example.com',
+    issuerDomainName: 'ca.example',
+    policy: 'wildcard',
+  );
+
+  print(persistData.toBindString());
+```
+
+The returned `DnsPersistDcvData` contains the TXT record to publish at
+`_validation-persist.<fqdn>`.
+
 ### Self Test
 
 It is recommended to check in advance if a challenge is passed by using the appropriate client method. Via the maxAttempts parameter you can increase or decrease the amount of time it will try to check for the challenge token. The default is 15.
@@ -132,6 +154,10 @@ It is recommended to check in advance if a challenge is passed by using the appr
     print('Selftest failed, no file found or content missmatch');
   }
 ```
+
+There is no generic public self-test helper for `dns-persist-01`. The normal
+flow is to print `persistData.toBindString()`, publish it in DNS, wait until it
+is visible to the CA, and then call `validate(persistData.challenge)`.
 
 ### Trigger Validation
 
@@ -163,6 +189,16 @@ var certs = await client.getCertificate(finalOrder);
 ```
 
 ## Changelog
+
+## Pebble Integration
+
+For local integration testing with Pebble and `challtestsrv`, see
+[tool/pebble/README.md](tool/pebble/README.md). The repository includes:
+
+- a local Docker Compose harness
+- a Pebble config file
+- an end-to-end `dns-persist-01` test in
+  [test/dns_persist_pebble_test.dart](test/dns_persist_pebble_test.dart)
 
 For a detailed changelog, see the [CHANGELOG.md](CHANGELOG.md) file
 

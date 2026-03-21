@@ -58,6 +58,10 @@ class Authorization {
     );
   }
 
+  bool hasChallengeType(String type) {
+    return challenges?.any((element) => element.type == type) ?? false;
+  }
+
   Challenge getChallengeByType(String type) {
     return challenges!.firstWhere((element) => element.type == type);
   }

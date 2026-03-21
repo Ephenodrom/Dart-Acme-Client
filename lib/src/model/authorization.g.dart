@@ -21,20 +21,11 @@ Authorization _$AuthorizationFromJson(Map<String, dynamic> json) =>
       digest: json['digest'] as String?,
     );
 
-Map<String, dynamic> _$AuthorizationToJson(Authorization instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('status', instance.status);
-  writeNotNull('expires', instance.expires?.toIso8601String());
-  writeNotNull('identifier', instance.identifier?.toJson());
-  writeNotNull(
-      'challenges', instance.challenges?.map((e) => e.toJson()).toList());
-  writeNotNull('digest', instance.digest);
-  return val;
-}
+Map<String, dynamic> _$AuthorizationToJson(Authorization instance) =>
+    <String, dynamic>{
+      'status': ?instance.status,
+      'expires': ?instance.expires?.toIso8601String(),
+      'identifier': ?instance.identifier?.toJson(),
+      'challenges': ?instance.challenges?.map((e) => e.toJson()).toList(),
+      'digest': ?instance.digest,
+    };

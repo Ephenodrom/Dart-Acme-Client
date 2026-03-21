@@ -10,20 +10,12 @@ ChallengeError _$ChallengeErrorFromJson(Map<String, dynamic> json) =>
     ChallengeError(
       detail: json['detail'] as String?,
       type: json['type'] as String?,
-      status: json['status'] as int?,
+      status: (json['status'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$ChallengeErrorToJson(ChallengeError instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('type', instance.type);
-  writeNotNull('detail', instance.detail);
-  writeNotNull('status', instance.status);
-  return val;
-}
+Map<String, dynamic> _$ChallengeErrorToJson(ChallengeError instance) =>
+    <String, dynamic>{
+      'type': ?instance.type,
+      'detail': ?instance.detail,
+      'status': ?instance.status,
+    };
