@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:acme_client/src/acme_client_exception.dart';
+import 'package:acme_client/src/acme_logger.dart';
 import 'package:acme_client/src/acme_util.dart';
 import 'package:acme_client/src/constants.dart';
 import 'package:acme_client/src/model/account.dart';
 import 'package:acme_client/src/model/acme_directories.dart';
 import 'package:acme_client/src/model/authorization.dart';
 import 'package:acme_client/src/model/challenge.dart';
+import 'package:acme_client/src/model/challenge_error.dart';
 import 'package:acme_client/src/model/dns_dcv_data.dart';
 import 'package:acme_client/src/model/http_dcv_data.dart';
 import 'package:acme_client/src/model/order.dart';
@@ -62,6 +65,9 @@ class AcmeClient {
   ///
   bool createIfNotExists;
 
+  /// Optional diagnostic logger. When omitted, the library is silent.
+  final AcmeLogFn? logger;
+
   ///
   /// * [baseUrl] = The base url of the acme server
   /// * [privateKeyPem] = The private key in PEM format. If none given, it will look within the [basePath] for a private key
@@ -77,6 +83,7 @@ class AcmeClient {
     this.acceptTerms,
     this.contacts, {
     this.createIfNotExists = true,
+    this.logger,
   });
 
   ///
@@ -101,7 +108,7 @@ class AcmeClient {
   ///
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
   ///
-  Future<Order?> order(Order order) async {
+  Future<Order> order(Order order) async {
     var jws = await _createJWS(directories!.newOrder!,
         useKid: true, payload: order.toJson());
     var body = json.encode(jws.toJson());
@@ -112,7 +119,7 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      _updateNonce(response);
       var orderUrl = '';
       if (!response.headers.isEmpty) {
         if (response.headers.map.containsKey('Location')) {
@@ -122,11 +129,23 @@ class AcmeClient {
       var newOrder = Order.fromJson(response.data);
       newOrder.orderUrl = orderUrl;
       return newOrder;
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
-
-      return null;
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeOrderException>(
+        e,
+        'Failed to create ACME order',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeOrderException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
@@ -135,7 +154,7 @@ class AcmeClient {
   ///
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
   ///
-  Future<Order?> orderInfo(Order order) async {
+  Future<Order> orderInfo(Order order) async {
     var jws = await _createJWS(order.orderUrl!, useKid: true);
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
@@ -145,35 +164,74 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      _updateNonce(response);
       var newOrder = Order.fromJson(response.data);
       return newOrder;
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
-      nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
-
-      return null;
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeOrderException>(
+        e,
+        'Failed to fetch ACME order info',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeOrderException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
   ///
   /// Fetches a list of current running orders
   ///
-  Future<List<String>?> orderList() async {
-    var jws = await _createJWS('${account!.accountURL!}/orders', useKid: true);
+  Future<List<String>> orderList() async {
+    var url = '${account!.accountURL!}/orders';
+    var jws = await _createJWS(url, useKid: true);
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
       var response = await Dio().post(
-        '${account!.accountURL!}/orders',
+        url,
         data: body,
         options: Options(headers: headers),
       );
-      print(response.data);
-      return <String>[];
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
-      return null;
+      _updateNonce(response);
+      _log(AcmeLogLevel.debug, 'Fetched order list response');
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['orders'] is List) {
+        return List<String>.from(data['orders'] as List);
+      }
+      if (data is List) {
+        return List<String>.from(data);
+      }
+      throw AcmeOrderException(
+        'Unexpected ACME order list response format',
+        uri: Uri.tryParse(url),
+        rawBody: data,
+      );
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeOrderException>(
+        e,
+        'Failed to fetch ACME order list',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeOrderException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
@@ -195,12 +253,27 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
+      _updateNonce(response);
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeValidationException>(
+        e,
+        'Failed to trigger ACME challenge validation',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeValidationException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
 
-    do {
+    while (maxAttempts > 0) {
       var jws = await _createJWS(challenge.authorizationUrl!, useKid: true);
       var body = json.encode(jws.toJson());
 
@@ -210,18 +283,50 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+        _updateNonce(response);
         var auth = Authorization.fromJson(response.data);
         if (auth.status == 'valid') {
           return true;
         }
-      } on DioException catch (e) {
-        print(e.response!.data!.toString());
+        if (auth.status == 'invalid') {
+          final failure = _extractChallengeFailure(auth, challenge.type);
+          throw AcmeValidationException(
+            failure?.detail ?? 'ACME challenge validation failed',
+            uri: Uri.tryParse(challenge.authorizationUrl!),
+            statusCode: failure?.status,
+            type: failure?.type,
+            detail: failure?.detail,
+            rawBody: response.data,
+          );
+        }
+      } on DioException catch (e, s) {
+        _captureErrorNonce(e);
+        throw _requestException<AcmeValidationException>(
+          e,
+          'Failed while polling ACME challenge authorization',
+          (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+              AcmeValidationException(
+            message,
+            uri: uri,
+            statusCode: statusCode,
+            type: type,
+            detail: detail,
+            rawBody: rawBody,
+            cause: cause,
+          ),
+          stackTrace: s,
+        );
       }
       maxAttempts--;
-      await Future.delayed(Duration(seconds: 4));
-    } while (maxAttempts > 0);
-    return false;
+      if (maxAttempts > 0) {
+        await Future.delayed(const Duration(seconds: 4));
+      }
+    }
+
+    throw AcmeValidationException(
+      'Timed out waiting for ACME challenge validation',
+      uri: Uri.tryParse(challenge.authorizationUrl ?? challenge.url ?? ''),
+    );
   }
 
   ///
@@ -229,7 +334,7 @@ class AcmeClient {
   ///
   /// RFC: <https://datatracker.ietf.org/doc/html/rfc8555#section-7.5>
   ///
-  Future<List<Authorization>?> getAuthorization(Order order) async {
+  Future<List<Authorization>> getAuthorization(Order order) async {
     var auth = <Authorization>[];
     for (var authUrl in order.authorizations!) {
       var jws = await _createJWS(authUrl, useKid: true);
@@ -241,15 +346,30 @@ class AcmeClient {
           data: body,
           options: Options(headers: headers),
         );
-        nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+        _updateNonce(response);
         var a = Authorization.fromJson(response.data);
         a.digest = AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem));
         for (var chall in a.challenges!) {
           chall.authorizationUrl = authUrl;
         }
         auth.add(a);
-      } on DioException catch (e) {
-        print(e.response!.data!.toString());
+      } on DioException catch (e, s) {
+        _captureErrorNonce(e);
+        throw _requestException<AcmeAuthorizationException>(
+          e,
+          'Failed to fetch ACME authorization',
+          (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+              AcmeAuthorizationException(
+            message,
+            uri: uri,
+            statusCode: statusCode,
+            type: type,
+            detail: detail,
+            rawBody: rawBody,
+            cause: cause,
+          ),
+          stackTrace: s,
+        );
       }
     }
     return auth;
@@ -263,7 +383,7 @@ class AcmeClient {
   ///
   Future<bool> isReady(Order order) async {
     var persistent = await orderInfo(order);
-    return persistent!.status! == 'ready';
+    return persistent.status == 'ready';
   }
 
   ///
@@ -275,35 +395,33 @@ class AcmeClient {
   /// the certificate. In this case we will wait 4 seconds and try again
   /// to fetch the certificate (url). This usually works on the first try but
   /// we allow you to set the retry limit via [retries] which defaults to 5.
-  Future<Order?> finalizeOrder(Order order, String csr,
+  Future<Order> finalizeOrder(Order order, String csr,
       {int retries = 5}) async {
     var transformedCsr = AcmeUtils.formatCsrBase64Url(csr);
-    try {
-      Order? persistent;
-      var firstpass = true;
-      Results results;
-      do {
-        if (firstpass) {
-          results = await _finalizeOrder(order, transformedCsr);
-        } else {
-          results = await _retry(order, transformedCsr);
-        }
-        firstpass = false;
-        retries--;
-
-        /// the CA was stilling processing the order
-      } while (results.response.data['status'] == 'processing' && retries > 0);
-
-      if (results.response.data['status'] != 'valid') {
-        persistent = null;
+    var firstpass = true;
+    Results results;
+    do {
+      if (firstpass) {
+        results = await _finalizeOrder(order, transformedCsr);
       } else {
-        persistent = results.order;
+        results = await _retry(order, transformedCsr);
       }
-      return persistent;
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
+      firstpass = false;
+      retries--;
+
+      /// the CA was stilling processing the order
+    } while (results.response.data['status'] == 'processing' && retries > 0);
+
+    if (results.response.data['status'] != 'valid') {
+      throw AcmeOrderException(
+        'ACME order finalization did not complete successfully',
+        uri: Uri.tryParse(order.orderUrl ?? order.finalize ?? ''),
+        rawBody: results.response.data,
+        detail: results.response.data['status']?.toString(),
+      );
     }
-    return null;
+
+    return results.order;
   }
 
   Future<Results> _finalizeOrder(Order order, String transformedCsr) async {
@@ -316,14 +434,28 @@ class AcmeClient {
     /// If we are retrying then delay
     await Future.delayed(Duration(seconds: 4), () {});
 
-    // return _fetchOrder(order.orderUrl!, transformedCsr);
-
-    final response = await Dio().get(
-      order.orderUrl!,
-    );
-    final persistent = Order.fromJson(response.data);
-
-    return Results(response, persistent);
+    try {
+      final response = await Dio().get(order.orderUrl!);
+      final persistent = Order.fromJson(response.data);
+      return Results(response, persistent);
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeOrderException>(
+        e,
+        'Failed while polling finalized ACME order',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeOrderException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
+    }
   }
 
   Future<Results> _fetchOrder(String url, String transformedCsr) async {
@@ -333,21 +465,40 @@ class AcmeClient {
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
 
-    final response = await Dio().post(
-      url,
-      data: body,
-      options: Options(headers: headers),
-    );
-    final persistent = Order.fromJson(response.data);
-    nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+    try {
+      final response = await Dio().post(
+        url,
+        data: body,
+        options: Options(headers: headers),
+      );
+      final persistent = Order.fromJson(response.data);
+      _updateNonce(response);
 
-    return Results(response, persistent);
+      return Results(response, persistent);
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeOrderException>(
+        e,
+        'Failed to submit finalized ACME order',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeOrderException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
+    }
   }
 
   ///
   /// Fetches the certificate with the complete chain from the ACME server.
   ///
-  Future<List<String>?> getCertificate(Order order) async {
+  Future<List<String>> getCertificate(Order order) async {
     var jws = await _createJWS(order.certificate!, useKid: true);
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
@@ -370,12 +521,26 @@ class AcmeClient {
           b.clear();
         }
       }
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
+      _updateNonce(response);
       return certs;
-    } on DioException catch (e) {
-      print(e.response!.data!.toString());
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeCertificateException>(
+        e,
+        'Failed to fetch ACME certificate chain',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeCertificateException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
-    return null;
   }
 
   ///
@@ -386,12 +551,13 @@ class AcmeClient {
       var records = await DnsUtils.lookupRecord(
           data.rRecord.name, RRecordType.TXT,
           provider: DnsApiProvider.GOOGLE);
-      if (records!.first.data == data.rRecord.data) {
-        print('Found record at Google DNS');
+      if (records != null &&
+          records.isNotEmpty &&
+          records.first.data == data.rRecord.data) {
+        _log(AcmeLogLevel.debug, 'Found record via Google DNS');
         return true;
-      } else {
-        print('Record not found yet at Google DNS');
       }
+      _log(AcmeLogLevel.debug, 'DNS record not visible via Google DNS yet');
       await Future.delayed(Duration(seconds: 4));
     }
     return false;
@@ -409,8 +575,13 @@ class AcmeClient {
             return true;
           }
         }
-      } on DioException {
-        // Do nothing
+      } on DioException catch (e, s) {
+        _log(
+          AcmeLogLevel.debug,
+          'HTTP self-test request failed',
+          error: e,
+          stackTrace: s,
+        );
       }
       await Future.delayed(Duration(seconds: 4));
     }
@@ -422,7 +593,7 @@ class AcmeClient {
   ///
   /// * [createIfnotExists] defines wether to create a new account if none exists
   ///
-  Future<Account?> getAccount({bool createIfnotExists = true}) async {
+  Future<Account> getAccount({bool createIfnotExists = true}) async {
     var payload = {
       'onlyReturnExisting': true,
       'termsOfServiceAgreed': acceptTerms,
@@ -438,26 +609,28 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-      var accountUrl = '';
-      if (!response.headers.isEmpty) {
-        if (response.headers.map.containsKey('Location')) {
-          accountUrl = response.headers.map['Location']!.first;
-        }
+      _updateNonce(response);
+      return _accountFromResponse(response);
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      if (createIfnotExists && e.response?.statusCode == 400) {
+        return createAccount();
       }
-      var account = Account.fromJson(response.data);
-      account.accountURL = accountUrl;
-      return account;
-    } on DioException catch (e) {
-      if (createIfnotExists) {
-        // No account found, create one
-        if (e.response!.statusCode == 400) {
-          nonce = e.response!.headers.map[HEADER_REPLAY_NONCE]!.first;
-          return await createAccount();
-        }
-      }
-      // TODO Handle error
-      return null;
+      throw _requestException<AcmeAccountException>(
+        e,
+        'Failed to fetch ACME account',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeAccountException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
@@ -465,7 +638,7 @@ class AcmeClient {
   /// Creates a new account for [publicKeyPem] by sending a POST request to the
   /// new account url.
   ///
-  Future<Account?> createAccount() async {
+  Future<Account> createAccount() async {
     var payload = {
       'onlyReturnExisting': false,
       'termsOfServiceAgreed': acceptTerms,
@@ -481,20 +654,25 @@ class AcmeClient {
         data: body,
         options: Options(headers: headers),
       );
-      nonce = response.headers.map[HEADER_REPLAY_NONCE]!.first;
-      var accountUrl = '';
-      if (!response.headers.isEmpty) {
-        if (response.headers.map.containsKey('Location')) {
-          accountUrl = response.headers.map['Location']!.first;
-        }
-      }
-      var account = Account.fromJson(response.data);
-      account.accountURL = accountUrl;
-      return account;
-    } on DioException catch (e) {
-      print(e.message);
-      // TODO Handle error
-      return null;
+      _updateNonce(response);
+      return _accountFromResponse(response);
+    } on DioException catch (e, s) {
+      _captureErrorNonce(e);
+      throw _requestException<AcmeAccountException>(
+        e,
+        'Failed to create ACME account',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeAccountException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
@@ -532,19 +710,59 @@ class AcmeClient {
   /// Fetches the directories from the ACME server
   ///
   Future<AcmeDirectories> _getDirectories() async {
-    var response = await Dio().get('$baseUrl/directory');
-    return AcmeDirectories.fromJson(response.data);
+    try {
+      var response = await Dio().get('$baseUrl/directory');
+      return AcmeDirectories.fromJson(response.data);
+    } on DioException catch (e, s) {
+      throw _requestException<AcmeDirectoryException>(
+        e,
+        'Failed to fetch ACME directory',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeDirectoryException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
+    }
   }
 
   ///
   /// Fetches a new nonce from the ACME server
   ///
-  Future<String?> _getNonce() async {
-    var response = await Dio().head(directories!.newNonce!);
-    if (response.headers.map.containsKey(HEADER_REPLAY_NONCE)) {
-      return response.headers.map[HEADER_REPLAY_NONCE]!.first;
-    } else {
-      return null;
+  Future<String> _getNonce() async {
+    try {
+      var response = await Dio().head(directories!.newNonce!);
+      var replayNonce = response.headers.value(HEADER_REPLAY_NONCE);
+      if (replayNonce == null || replayNonce.isEmpty) {
+        throw AcmeNonceException(
+          'ACME server response did not include a replay nonce',
+          uri: Uri.tryParse(directories!.newNonce!),
+          rawBody: response.data,
+        );
+      }
+      return replayNonce;
+    } on DioException catch (e, s) {
+      throw _requestException<AcmeNonceException>(
+        e,
+        'Failed to fetch ACME replay nonce',
+        (message, {uri, statusCode, type, detail, rawBody, cause}) =>
+            AcmeNonceException(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        ),
+        stackTrace: s,
+      );
     }
   }
 
@@ -565,6 +783,164 @@ class AcmeClient {
     if (StringUtils.isNullOrEmpty(publicKeyPem)) {
       throw ArgumentError('Public key PEM is missing');
     }
+  }
+
+  Account _accountFromResponse(Response response) {
+    var accountUrl = '';
+    if (!response.headers.isEmpty &&
+        response.headers.map.containsKey('Location')) {
+      accountUrl = response.headers.map['Location']!.first;
+    }
+    final account = Account.fromJson(response.data);
+    account.accountURL = accountUrl;
+    return account;
+  }
+
+  void _updateNonce(Response response) {
+    final replayNonce = response.headers.value(HEADER_REPLAY_NONCE);
+    if (replayNonce != null && replayNonce.isNotEmpty) {
+      nonce = replayNonce;
+    }
+  }
+
+  void _captureErrorNonce(DioException e) {
+    final replayNonce = e.response?.headers.value(HEADER_REPLAY_NONCE);
+    if (replayNonce != null && replayNonce.isNotEmpty) {
+      nonce = replayNonce;
+    }
+  }
+
+  ChallengeError? _extractChallengeFailure(
+      Authorization authorization, String? type) {
+    if (authorization.challenges == null || type == null) {
+      return null;
+    }
+    for (final challenge in authorization.challenges!) {
+      if (challenge.type == type && challenge.error != null) {
+        return challenge.error;
+      }
+    }
+    return null;
+  }
+
+  T _requestException<T extends AcmeClientException>(
+    DioException exception,
+    String fallbackMessage,
+    T Function(
+      String message, {
+      Uri? uri,
+      int? statusCode,
+      String? type,
+      String? detail,
+      Object? rawBody,
+      Object? cause,
+    }) builder, {
+    StackTrace? stackTrace,
+  }) {
+    final response = exception.response;
+    final rawBody = response?.data;
+    final detail = _extractErrorDetail(rawBody) ?? exception.message;
+    final type = _extractErrorType(rawBody);
+    final uri = Uri.tryParse(response?.realUri.toString() ??
+        exception.requestOptions.uri.toString());
+    final message = detail == null || detail.isEmpty
+        ? fallbackMessage
+        : '$fallbackMessage: $detail';
+
+    _log(AcmeLogLevel.error, message, error: exception, stackTrace: stackTrace);
+
+    return builder(
+      message,
+      uri: uri,
+      statusCode: response?.statusCode,
+      type: type,
+      detail: detail,
+      rawBody: rawBody,
+      cause: exception,
+    );
+  }
+
+  String? _extractErrorDetail(Object? rawBody) {
+    if (rawBody is Map<String, dynamic>) {
+      final challengeDetail =
+          _nestedString(rawBody, ['challenges', '0', 'error', 'detail']);
+      if (challengeDetail != null && challengeDetail.isNotEmpty) {
+        return challengeDetail;
+      }
+
+      final detail = rawBody['detail'];
+      if (detail is String && detail.isNotEmpty) {
+        return detail;
+      }
+
+      final error = rawBody['error'];
+      if (error is Map<String, dynamic>) {
+        final nestedDetail = error['detail'];
+        if (nestedDetail is String && nestedDetail.isNotEmpty) {
+          return nestedDetail;
+        }
+      }
+    }
+
+    if (rawBody is String && rawBody.isNotEmpty) {
+      return rawBody;
+    }
+
+    return null;
+  }
+
+  String? _extractErrorType(Object? rawBody) {
+    if (rawBody is Map<String, dynamic>) {
+      final challengeType =
+          _nestedString(rawBody, ['challenges', '0', 'error', 'type']);
+      if (challengeType != null && challengeType.isNotEmpty) {
+        return challengeType;
+      }
+
+      final type = rawBody['type'];
+      if (type is String && type.isNotEmpty) {
+        return type;
+      }
+
+      final error = rawBody['error'];
+      if (error is Map<String, dynamic>) {
+        final nestedType = error['type'];
+        if (nestedType is String && nestedType.isNotEmpty) {
+          return nestedType;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String? _nestedString(Map<String, dynamic> rawBody, List<String> path) {
+    Object? current = rawBody;
+    for (final segment in path) {
+      if (current is Map<String, dynamic>) {
+        current = current[segment];
+        continue;
+      }
+      if (current is List<Object?>) {
+        final index = int.tryParse(segment);
+        if (index == null || index >= current.length) {
+          return null;
+        }
+        current = current[index];
+        continue;
+      }
+      return null;
+    }
+    return current is String ? current : null;
+  }
+
+  void _log(
+    AcmeLogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    logger?.call(level, message, error: error, stackTrace: stackTrace);
   }
 }
 
