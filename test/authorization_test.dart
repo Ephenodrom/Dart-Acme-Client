@@ -5,6 +5,7 @@ import 'package:acme_client/src/model/identifiers.dart';
 import 'package:jose/jose.dart';
 import 'package:test/test.dart';
 
+/// @Throwing(ArgumentError, reason: 'test setup may construct incomplete authorization data for the model helpers')
 void main() {
   test('Test getDnsDcvData()', () {
     var digest = AcmeUtils.getDigest(JsonWebKey.fromJson({

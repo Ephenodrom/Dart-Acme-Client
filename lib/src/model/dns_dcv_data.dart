@@ -14,6 +14,7 @@ class DnsDcvData extends DcvData {
 
   DnsDcvData(this.rRecord, this.challenge) : super(DcvType.DNS);
 
+  /// @Throwing(ArgumentError, reason: 'the JSON payload does not match the expected DNS DCV data shape')
   factory DnsDcvData.fromJson(Map<String, dynamic> json) =>
       _$DnsDcvDataFromJson(json);
 

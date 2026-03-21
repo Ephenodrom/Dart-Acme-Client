@@ -14,6 +14,7 @@ class HttpDcvData extends DcvData {
   HttpDcvData(this.fileName, this.fileContent, this.challenge)
       : super(DcvType.HTTP);
 
+  /// @Throwing(ArgumentError, reason: 'the JSON payload does not match the expected HTTP DCV data shape')
   factory HttpDcvData.fromJson(Map<String, dynamic> json) =>
       _$HttpDcvDataFromJson(json);
 

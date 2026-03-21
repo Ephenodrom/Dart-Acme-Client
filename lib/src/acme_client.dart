@@ -92,6 +92,11 @@ class AcmeClient {
   /// The client will fetch the directories according to the given baseUrl and try to retreive the account information.
   /// Depending on [createIfNotExists] it will create a new account if none exists.
   ///
+  /// @Throwing(AcmeAccountException, reason: 'account lookup or creation failed during client initialization')
+  /// @Throwing(AcmeConfigurationException, reason: 'client configuration is invalid')
+  /// @Throwing(AcmeDirectoryException, reason: 'directory discovery failed')
+  /// @Throwing(AcmeJwsException, reason: 'account lookup request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained while initializing the client')
   Future<void> init() async {
     // Validate data
     validateData();
@@ -108,6 +113,9 @@ class AcmeClient {
   ///
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
   ///
+  /// @Throwing(AcmeJwsException, reason: 'order creation request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for order creation')
+  /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected or failed to create the order')
   Future<Order> order(Order order) async {
     var jws = await _createJWS(directories!.newOrder!,
         useKid: true, payload: order.toJson());
@@ -154,6 +162,9 @@ class AcmeClient {
   ///
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
   ///
+  /// @Throwing(AcmeJwsException, reason: 'order info request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for order lookup')
+  /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected or failed to return the order')
   Future<Order> orderInfo(Order order) async {
     var jws = await _createJWS(order.orderUrl!, useKid: true);
     var body = json.encode(jws.toJson());
@@ -190,6 +201,9 @@ class AcmeClient {
   ///
   /// Fetches a list of current running orders
   ///
+  /// @Throwing(AcmeJwsException, reason: 'order list request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for order listing')
+  /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected the order list request or returned an unexpected payload')
   Future<List<String>> orderList() async {
     var url = '${account!.accountURL!}/orders';
     var jws = await _createJWS(url, useKid: true);
@@ -240,11 +254,15 @@ class AcmeClient {
   ///
   /// RFC: https://datatracker.ietf.org/doc/html/rfc8555#section-7.5.1
   ///
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for challenge validation')
+  /// @Throwing(AcmeJwsException, reason: 'challenge validation requests could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated during challenge validation')
+  /// @Throwing(AcmeValidationException, reason: 'the ACME challenge could not be triggered, polled, or completed successfully')
   Future<bool> validate(Challenge challenge, {int maxAttempts = 15}) async {
-    var jws = await _createJWS(challenge.url!, useKid: true, payload: {
-      'keyAuthorization':
-          '${challenge.token!}.${AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem))}'
-    });
+    final keyDigest = _getAccountKeyDigest();
+    var jws = await _createJWS(challenge.url!,
+        useKid: true,
+        payload: {'keyAuthorization': '${challenge.token!}.$keyDigest'});
     var body = json.encode(jws.toJson());
     var headers = {'Content-Type': 'application/jose+json'};
     try {
@@ -334,7 +352,12 @@ class AcmeClient {
   ///
   /// RFC: <https://datatracker.ietf.org/doc/html/rfc8555#section-7.5>
   ///
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for authorization processing')
+  /// @Throwing(AcmeAuthorizationException, reason: 'the ACME server rejected or failed to return authorization data')
+  /// @Throwing(AcmeJwsException, reason: 'authorization lookup requests could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching authorizations')
   Future<List<Authorization>> getAuthorization(Order order) async {
+    final accountKeyDigest = _getAccountKeyDigest();
     var auth = <Authorization>[];
     for (var authUrl in order.authorizations!) {
       var jws = await _createJWS(authUrl, useKid: true);
@@ -348,7 +371,7 @@ class AcmeClient {
         );
         _updateNonce(response);
         var a = Authorization.fromJson(response.data);
-        a.digest = AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem));
+        a.digest = accountKeyDigest;
         for (var chall in a.challenges!) {
           chall.authorizationUrl = authUrl;
         }
@@ -381,6 +404,9 @@ class AcmeClient {
   ///
   /// Returns true if the status is 'ready' otherwise false.
   ///
+  /// @Throwing(AcmeJwsException, reason: 'order readiness check request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while checking order readiness')
+  /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected or failed to return order readiness information')
   Future<bool> isReady(Order order) async {
     var persistent = await orderInfo(order);
     return persistent.status == 'ready';
@@ -395,6 +421,9 @@ class AcmeClient {
   /// the certificate. In this case we will wait 4 seconds and try again
   /// to fetch the certificate (url). This usually works on the first try but
   /// we allow you to set the retry limit via [retries] which defaults to 5.
+  /// @Throwing(AcmeJwsException, reason: 'order finalization requests could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated during order finalization')
+  /// @Throwing(AcmeOrderException, reason: 'the order could not be finalized or did not reach a valid state')
   Future<Order> finalizeOrder(Order order, String csr,
       {int retries = 5}) async {
     var transformedCsr = AcmeUtils.formatCsrBase64Url(csr);
@@ -424,12 +453,17 @@ class AcmeClient {
     return results.order;
   }
 
+  /// @Throwing(AcmeJwsException, reason: 'initial order finalization request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for the initial finalization request')
+  /// @Throwing(AcmeOrderException, reason: 'the initial order finalization request failed')
   Future<Results> _finalizeOrder(Order order, String transformedCsr) async {
     return _fetchOrder(order.finalize!, transformedCsr);
   }
 
   /// If the order was in a state of 'processing' when we called finalize
   /// we need to retry fetching the order.
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be updated while polling a finalized order')
+  /// @Throwing(AcmeOrderException, reason: 'polling the finalized order failed')
   Future<Results> _retry(Order order, String transformedCsr) async {
     /// If we are retrying then delay
     await Future.delayed(Duration(seconds: 4), () {});
@@ -458,6 +492,9 @@ class AcmeClient {
     }
   }
 
+  /// @Throwing(AcmeJwsException, reason: 'finalized order submission could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while submitting a finalized order')
+  /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected the finalized order submission')
   Future<Results> _fetchOrder(String url, String transformedCsr) async {
     var jws = await _createJWS(url, useKid: true, payload: {
       'csr': transformedCsr,
@@ -498,6 +535,9 @@ class AcmeClient {
   ///
   /// Fetches the certificate with the complete chain from the ACME server.
   ///
+  /// @Throwing(AcmeCertificateException, reason: 'the certificate chain could not be fetched from the ACME server')
+  /// @Throwing(AcmeJwsException, reason: 'certificate download request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching the certificate chain')
   Future<List<String>> getCertificate(Order order) async {
     var jws = await _createJWS(order.certificate!, useKid: true);
     var body = json.encode(jws.toJson());
@@ -593,6 +633,9 @@ class AcmeClient {
   ///
   /// * [createIfnotExists] defines wether to create a new account if none exists
   ///
+  /// @Throwing(AcmeAccountException, reason: 'account lookup failed and the account could not be created')
+  /// @Throwing(AcmeJwsException, reason: 'account lookup request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while looking up the account')
   Future<Account> getAccount({bool createIfnotExists = true}) async {
     var payload = {
       'onlyReturnExisting': true,
@@ -638,6 +681,9 @@ class AcmeClient {
   /// Creates a new account for [publicKeyPem] by sending a POST request to the
   /// new account url.
   ///
+  /// @Throwing(AcmeAccountException, reason: 'account creation failed')
+  /// @Throwing(AcmeJwsException, reason: 'account creation request could not be signed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while creating the account')
   Future<Account> createAccount() async {
     var payload = {
       'onlyReturnExisting': false,
@@ -679,36 +725,82 @@ class AcmeClient {
   ///
   /// Creates a JSON WEB SIGNATURE
   ///
+  /// @Throwing(AcmeJwsException, reason: 'JSON Web Signature creation failed')
+  /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained before creating the JSON Web Signature')
   Future<JsonWebSignature> _createJWS(String url,
       {bool useKid = false, Map<String, dynamic>? payload}) async {
     nonce ??= await _getNonce();
-    var builder = JsonWebSignatureBuilder();
+    try {
+      var builder = JsonWebSignatureBuilder();
 
-    var privateJwk = JsonWebKey.fromPem(privateKeyPem);
-    var publicJwk = JsonWebKey.fromPem(publicKeyPem);
+      var privateJwk = JsonWebKey.fromPem(privateKeyPem);
+      var publicJwk = JsonWebKey.fromPem(publicKeyPem);
 
-    if (payload == null) {
-      builder.stringContent = '';
-    } else {
-      builder.stringContent = json.encode(payload);
+      if (payload == null) {
+        builder.stringContent = '';
+      } else {
+        builder.stringContent = json.encode(payload);
+      }
+      builder.addRecipient(privateJwk, algorithm: 'RS256');
+      if (useKid) {
+        builder.setProtectedHeader('kid', account!.accountURL!);
+      } else {
+        builder.setProtectedHeader('jwk', publicJwk.toJson());
+      }
+      builder.setProtectedHeader('nonce', nonce);
+      builder.setProtectedHeader('url', url);
+
+      var jws = builder.build();
+
+      return jws;
+    } on AcmeClientException {
+      rethrow;
+    } on ArgumentError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create JSON Web Signature',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeJwsException(
+        'Failed to create JSON Web Signature',
+        uri: Uri.tryParse(url),
+        detail: e.message?.toString(),
+        cause: e,
+      );
+    } on UnsupportedError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create JSON Web Signature',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeJwsException(
+        'Failed to create JSON Web Signature',
+        uri: Uri.tryParse(url),
+        detail: e.message,
+        cause: e,
+      );
+    } on StateError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create JSON Web Signature',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeJwsException(
+        'Failed to create JSON Web Signature',
+        uri: Uri.tryParse(url),
+        detail: e.message,
+        cause: e,
+      );
     }
-    builder.addRecipient(privateJwk, algorithm: 'RS256');
-    if (useKid) {
-      builder.setProtectedHeader('kid', account!.accountURL!);
-    } else {
-      builder.setProtectedHeader('jwk', publicJwk.toJson());
-    }
-    builder.setProtectedHeader('nonce', nonce);
-    builder.setProtectedHeader('url', url);
-
-    var jws = builder.build();
-
-    return jws;
   }
 
   ///
   /// Fetches the directories from the ACME server
   ///
+  /// @Throwing(AcmeDirectoryException, reason: 'the ACME directory endpoint could not be fetched or parsed')
   Future<AcmeDirectories> _getDirectories() async {
     try {
       var response = await Dio().get('$baseUrl/directory');
@@ -735,13 +827,18 @@ class AcmeClient {
   ///
   /// Fetches a new nonce from the ACME server
   ///
+  /// @Throwing(AcmeNonceException, reason: 'the replay nonce request failed, returned no nonce, or returned multiple nonce values')
   Future<String> _getNonce() async {
     try {
       var response = await Dio().head(directories!.newNonce!);
-      var replayNonce = response.headers.value(HEADER_REPLAY_NONCE);
+      var replayNonce = _readReplayNonceHeader(
+        response.headers,
+        uri: Uri.tryParse(directories!.newNonce!),
+      );
       if (replayNonce == null || replayNonce.isEmpty) {
         throw AcmeNonceException(
           'ACME server response did not include a replay nonce',
+          reason: AcmeNonceExceptionReason.missingReplayNonce,
           uri: Uri.tryParse(directories!.newNonce!),
           rawBody: response.data,
         );
@@ -754,6 +851,7 @@ class AcmeClient {
         (message, {uri, statusCode, type, detail, rawBody, cause}) =>
             AcmeNonceException(
           message,
+          reason: AcmeNonceExceptionReason.fetchFailed,
           uri: uri,
           statusCode: statusCode,
           type: type,
@@ -767,21 +865,24 @@ class AcmeClient {
   }
 
   ///
-  /// Validates the client data. Throws an [ArgumentError] if values are missing or incorrect.
+  /// Validates the client data.
   ///
+  /// @Throwing(AcmeConfigurationException, reason: 'required client configuration values are missing or invalid')
   void validateData() {
     for (var element in contacts) {
       if (!element.startsWith('mailto')) {
-        throw ArgumentError('Given contacts have to start with "mailto:"');
+        throw const AcmeConfigurationException(
+          'Given contacts have to start with "mailto:"',
+        );
       }
     }
 
     if (StringUtils.isNullOrEmpty(baseUrl)) {
-      throw ArgumentError('baseUrl is missing');
+      throw const AcmeConfigurationException('baseUrl is missing');
     }
 
     if (StringUtils.isNullOrEmpty(publicKeyPem)) {
-      throw ArgumentError('Public key PEM is missing');
+      throw const AcmeConfigurationException('Public key PEM is missing');
     }
   }
 
@@ -796,15 +897,25 @@ class AcmeClient {
     return account;
   }
 
+  /// @Throwing(AcmeNonceException, reason: 'the replay nonce header could not be read from the response')
   void _updateNonce(Response response) {
-    final replayNonce = response.headers.value(HEADER_REPLAY_NONCE);
+    final replayNonce = _readReplayNonceHeader(
+      response.headers,
+      uri: response.realUri,
+    );
     if (replayNonce != null && replayNonce.isNotEmpty) {
       nonce = replayNonce;
     }
   }
 
+  /// @Throwing(AcmeNonceException, reason: 'the replay nonce header could not be read from the error response')
   void _captureErrorNonce(DioException e) {
-    final replayNonce = e.response?.headers.value(HEADER_REPLAY_NONCE);
+    final replayNonce = e.response == null
+        ? null
+        : _readReplayNonceHeader(
+            e.response!.headers,
+            uri: e.response!.realUri,
+          );
     if (replayNonce != null && replayNonce.isNotEmpty) {
       nonce = replayNonce;
     }
@@ -941,6 +1052,69 @@ class AcmeClient {
     StackTrace? stackTrace,
   }) {
     logger?.call(level, message, error: error, stackTrace: stackTrace);
+  }
+
+  /// @Throwing(AcmeNonceException, reason: 'the replay nonce header contained multiple values')
+  String? _readReplayNonceHeader(Headers headers, {Uri? uri}) {
+    try {
+      return headers.value(HEADER_REPLAY_NONCE);
+    } on Exception catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'ACME replay nonce header had multiple values',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeNonceException(
+        'ACME replay nonce header had multiple values',
+        reason: AcmeNonceExceptionReason.multipleReplayNonceValues,
+        uri: uri,
+        cause: e,
+      );
+    }
+  }
+
+  /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated from the configured public key')
+  String _getAccountKeyDigest() {
+    try {
+      return AcmeUtils.getDigest(JsonWebKey.fromPem(publicKeyPem));
+    } on ArgumentError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create ACME account key digest',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeAccountKeyDigestException(
+        'Failed to create ACME account key digest',
+        detail: e.message?.toString(),
+        cause: e,
+      );
+    } on UnsupportedError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create ACME account key digest',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeAccountKeyDigestException(
+        'Failed to create ACME account key digest',
+        detail: e.message,
+        cause: e,
+      );
+    } on StateError catch (e, s) {
+      _log(
+        AcmeLogLevel.error,
+        'Failed to create ACME account key digest',
+        error: e,
+        stackTrace: s,
+      );
+      throw AcmeAccountKeyDigestException(
+        'Failed to create ACME account key digest',
+        detail: e.message,
+        cause: e,
+      );
+    }
   }
 }
 

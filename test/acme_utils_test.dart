@@ -2,6 +2,8 @@ import 'package:acme_client/src/acme_util.dart';
 import 'package:jose/jose.dart';
 import 'package:test/test.dart';
 
+/// @Throwing(ArgumentError, reason: 'test setup may supply invalid matcher or digest inputs')
+/// @Throwing(UnsupportedError, reason: 'test setup may exercise unsupported key material while constructing JOSE objects')
 void main() {
   test('Test getDigest()', () {
     var key = JsonWebKey.fromJson({

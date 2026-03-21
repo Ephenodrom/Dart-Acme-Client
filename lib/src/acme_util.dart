@@ -5,6 +5,7 @@ import 'package:basic_utils/basic_utils.dart';
 import 'package:jose/jose.dart';
 
 class AcmeUtils {
+  /// @Throwing(ArgumentError, reason: 'the supplied JWK cannot be converted into a stable digest input')
   static String getDigest(JsonWebKey key) {
     var keyAsJson = key.toJson();
     var sortedKeys = keyAsJson.keys.toList()..sort();

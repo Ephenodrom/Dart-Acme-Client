@@ -1,3 +1,9 @@
+enum AcmeNonceExceptionReason {
+  fetchFailed,
+  missingReplayNonce,
+  multipleReplayNonceValues,
+}
+
 class AcmeClientException implements Exception {
   const AcmeClientException(
     this.message, {
@@ -63,6 +69,49 @@ class AcmeDirectoryException extends AcmeClientException {
 
 class AcmeNonceException extends AcmeClientException {
   const AcmeNonceException(
+    String message, {
+    required this.reason,
+    Uri? uri,
+    int? statusCode,
+    String? type,
+    String? detail,
+    Object? rawBody,
+    Object? cause,
+  }) : super(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        );
+
+  final AcmeNonceExceptionReason reason;
+}
+
+class AcmeJwsException extends AcmeClientException {
+  const AcmeJwsException(
+    String message, {
+    Uri? uri,
+    int? statusCode,
+    String? type,
+    String? detail,
+    Object? rawBody,
+    Object? cause,
+  }) : super(
+          message,
+          uri: uri,
+          statusCode: statusCode,
+          type: type,
+          detail: detail,
+          rawBody: rawBody,
+          cause: cause,
+        );
+}
+
+class AcmeAccountKeyDigestException extends AcmeClientException {
+  const AcmeAccountKeyDigestException(
     String message, {
     Uri? uri,
     int? statusCode,

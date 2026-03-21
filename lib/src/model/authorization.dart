@@ -32,6 +32,7 @@ class Authorization {
 
   Map<String, dynamic> toJson() => _$AuthorizationToJson(this);
 
+  /// @Throwing(ArgumentError, reason: 'the DNS challenge authorization data is incomplete or malformed')
   DnsDcvData getDnsDcvData() {
     var keyAuthorization = getKeyAuthorizationForChallenge(VALIDATION_DNS);
     var b = CryptoUtils.getHashPlain(
