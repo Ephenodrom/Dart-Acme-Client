@@ -1,7 +1,7 @@
 import 'package:acme_client/src/model/dcv_type.dart';
 
-class DcvData {
+class ChallengeData {
   DcvType type;
 
-  DcvData(this.type);
+  ChallengeData(this.type);
 }

@@ -34,36 +34,44 @@ void main() {
     'Pebble dns-persist-01 end-to-end',
     () async {
       final dio = _buildPebbleDio(trustedRootPath);
-      final client = AcmeClient(
-        baseUrl,
-        _testPrivateKeyPem,
-        _testPublicKeyPem,
-        true,
-        ['mailto:test@example.com'],
+      final connection = AcmeConnection(
+        baseUrl: baseUrl,
         dio: dio,
       );
-
-      await client.init();
-
-      final order = await client.order(
-        Order(
-          identifiers: [Identifiers(type: 'dns', value: identifier)],
-        ),
+      final credentials = AcmeAccountCredentials(
+        privateKeyPem: _testPrivateKeyPem,
+        publicKeyPem: _testPublicKeyPem,
+        acceptTerms: true,
+        contacts: ['mailto:test@example.com'],
+      );
+      final account = await Account.fetch(
+        credentials,
+        connection: connection,
       );
 
-      final persistData = await client.getDnsPersistDcvDataForOrder(
-        order,
-        identifier: identifier,
-        policy: 'wildcard',
+      final order = await account.createOrder(
+        Order(identifiers: [DomainIdentifier(identifier)]),
+      );
+
+      final authorizations = await order.getAuthorizations();
+      final domainIdentifier = DomainIdentifier(identifier);
+      final persistChallenge =
+          order.getChallengeForIdentifier<DnsPersistChallenge>(
+            domainIdentifier,
+            authorizations,
+          );
+      final persistData = persistChallenge.buildDnsPersistChallengeData(
+        domainIdentifier: domainIdentifier,
+        accountUri: account.accountURL!,
       );
 
       await _publishTxtRecord(
         managementUrl,
-        persistData.rRecord.name,
-        persistData.rRecord.data.toString(),
+        persistData.txtRecordName,
+        persistData.txtRecordValue,
       );
 
-      final authValid = await client.validate(persistData.challenge);
+      final authValid = await account.validate(persistData.challenge);
       expect(authValid, isTrue);
     },
     skip: enabled
@@ -80,13 +88,8 @@ Future<void> _publishTxtRecord(
   final managementClient = Dio();
   await managementClient.post(
     '$managementUrl/set-txt',
-    data: json.encode({
-      'host': host,
-      'value': value,
-    }),
-    options: Options(
-      headers: {'Content-Type': 'application/json'},
-    ),
+    data: json.encode({'host': host, 'value': value}),
+    options: Options(headers: {'Content-Type': 'application/json'}),
   );
 }
 

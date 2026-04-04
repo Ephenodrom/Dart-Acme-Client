@@ -7,9 +7,9 @@ class AccountRequestPayload implements JwsPayload {
     required bool onlyReturnExisting,
     required bool termsOfServiceAgreed,
     required List<String> contact,
-  })  : _onlyReturnExisting = onlyReturnExisting,
-        _termsOfServiceAgreed = termsOfServiceAgreed,
-        _contact = contact;
+  }) : _onlyReturnExisting = onlyReturnExisting,
+       _termsOfServiceAgreed = termsOfServiceAgreed,
+       _contact = contact;
 
   final bool _onlyReturnExisting;
   final bool _termsOfServiceAgreed;
@@ -17,8 +17,8 @@ class AccountRequestPayload implements JwsPayload {
 
   @override
   String get stringContent => json.encode({
-        'onlyReturnExisting': _onlyReturnExisting,
-        'termsOfServiceAgreed': _termsOfServiceAgreed,
-        'contact': _contact,
-      });
+    'onlyReturnExisting': _onlyReturnExisting,
+    'termsOfServiceAgreed': _termsOfServiceAgreed,
+    'contact': _contact,
+  });
 }

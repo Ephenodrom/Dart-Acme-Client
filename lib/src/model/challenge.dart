@@ -1,30 +1,68 @@
-import 'package:acme_client/src/model/challenge_error.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:acme_client/src/acme_client_exception.dart';
+import 'package:acme_client/src/model/challenge_type.dart';
+import 'package:acme_client/src/payloads/validation_payload.dart';
 
-part 'challenge.g.dart';
-
-@JsonSerializable(includeIfNull: false, explicitToJson: true)
-class Challenge {
-  String? type;
-  String? url;
-  String? status;
-  String? token;
-  @JsonKey(name: 'issuer-domain-names')
-  List<String>? issuerDomainNames;
-  String? authorizationUrl;
-  ChallengeError? error;
-
+abstract class Challenge {
   Challenge({
-    this.token,
-    this.type,
     this.url,
     this.status,
+    this.token,
     this.issuerDomainNames,
     this.authorizationUrl,
   });
 
-  factory Challenge.fromJson(Map<String, dynamic> json) =>
-      _$ChallengeFromJson(json);
+  final String? url;
+  final String? status;
+  final String? token;
+  final List<String>? issuerDomainNames;
+  String? authorizationUrl;
 
-  Map<String, dynamic> toJson() => _$ChallengeToJson(this);
+  ChallengeType get challengeType;
+
+  String get type => challengeType.wireValue;
+  static bool has<T extends Challenge>(Iterable<Challenge>? challenges) =>
+      challenges?.any((challenge) => challenge is T) ?? false;
+
+  static T get<T extends Challenge>(Iterable<Challenge> challenges) =>
+      challenges.whereType<T>().first;
+
+  Challenge? refreshedFrom(AuthorizationLike authorization) {
+    final challenges = authorization.challenges;
+    if (challenges == null) {
+      return null;
+    }
+    for (final candidate in challenges) {
+      if (url != null && candidate.url == url) {
+        return candidate;
+      }
+    }
+    for (final candidate in challenges) {
+      if (candidate.challengeType == challengeType) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  ValidationPayload createValidationPayload({
+    required String Function() accountKeyDigestProvider,
+  });
+
+  String requireToken() {
+    final challengeToken = token;
+    if (challengeToken == null || challengeToken.isEmpty) {
+      throw AcmeValidationException(
+        'ACME challenge is missing a token',
+        uri: Uri.tryParse(url ?? authorizationUrl ?? ''),
+      );
+    }
+    return challengeToken;
+  }
+
+  String buildKeyAuthorization(String accountKeyDigest) =>
+      '${requireToken()}.$accountKeyDigest';
+}
+
+abstract class AuthorizationLike {
+  List<Challenge>? get challenges;
 }

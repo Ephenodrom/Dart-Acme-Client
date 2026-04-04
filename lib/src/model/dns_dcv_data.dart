@@ -1,24 +1,41 @@
-import 'package:acme_client/src/model/challenge.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:acme_client/src/model/dcv_data.dart';
 import 'package:acme_client/src/model/dcv_type.dart';
+import 'package:acme_client/src/model/dns_challenge.dart';
+import 'package:acme_client/src/model/identifiers.dart';
 import 'package:basic_utils/basic_utils.dart';
-import 'package:json_annotation/json_annotation.dart';
+class DnsChallengeData extends ChallengeData {
+  final RRecord _rRecord;
+  final DnsChallenge challenge;
 
-part 'dns_dcv_data.g.dart';
+  DnsChallengeData._(this._rRecord, this.challenge) : super(DcvType.DNS);
 
-@JsonSerializable(includeIfNull: false)
-class DnsDcvData extends DcvData {
-  RRecord rRecord;
+  factory DnsChallengeData.forAuthorization({
+    required DomainIdentifier domainIdentifier,
+    required String keyAuthorization,
+    required DnsChallenge challenge,
+  }) {
+    final hash = CryptoUtils.getHashPlain(
+      Uint8List.fromList(keyAuthorization.codeUnits),
+    );
+    final value = base64UrlEncode(hash).replaceAll('=', '');
 
-  Challenge challenge;
+    return DnsChallengeData._(
+      RRecord(
+        name: '_acme-challenge.${domainIdentifier.value}',
+        rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
+        ttl: 300,
+        data: value,
+      ),
+      challenge,
+    );
+  }
 
-  DnsDcvData(this.rRecord, this.challenge) : super(DcvType.DNS);
+  String get txtRecordName => _rRecord.name;
 
-  /// @Throwing(ArgumentError, reason: 'the JSON payload does not match the expected DNS DCV data shape')
-  factory DnsDcvData.fromJson(Map<String, dynamic> json) =>
-      _$DnsDcvDataFromJson(json);
+  String get txtRecordValue => _rRecord.data;
 
-  Map<String, dynamic> toJson() => _$DnsDcvDataToJson(this);
-
-  String toBindString() => DnsUtils.toBind(rRecord);
+  String toBindString() => DnsUtils.toBind(_rRecord);
 }

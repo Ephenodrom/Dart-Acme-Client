@@ -1,22 +1,26 @@
-import 'package:acme_client/src/model/challenge.dart';
 import 'package:acme_client/src/model/dcv_data.dart';
 import 'package:acme_client/src/model/dcv_type.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:acme_client/src/model/http_challenge.dart';
+import 'package:acme_client/src/model/identifiers.dart';
+class HttpChallengeData extends ChallengeData {
+  final String fileName;
+  final String fileContent;
+  final HttpChallenge challenge;
 
-part 'http_dcv_data.g.dart';
+  HttpChallengeData(this.fileName, this.fileContent, this.challenge)
+    : super(DcvType.HTTP);
 
-@JsonSerializable(includeIfNull: false)
-class HttpDcvData extends DcvData {
-  String fileName;
-  String fileContent;
-  Challenge challenge;
+  factory HttpChallengeData.forAuthorization({
+    required DomainIdentifier domainIdentifier,
+    required String keyAuthorization,
+    required HttpChallenge challenge,
+  }) {
+    final token = keyAuthorization.split('.').first;
+    return HttpChallengeData(
+      '${domainIdentifier.value}/.well-known/acme-challenge/$token',
+      keyAuthorization,
+      challenge,
+    );
+  }
 
-  HttpDcvData(this.fileName, this.fileContent, this.challenge)
-      : super(DcvType.HTTP);
-
-  /// @Throwing(ArgumentError, reason: 'the JSON payload does not match the expected HTTP DCV data shape')
-  factory HttpDcvData.fromJson(Map<String, dynamic> json) =>
-      _$HttpDcvDataFromJson(json);
-
-  Map<String, dynamic> toJson() => _$HttpDcvDataToJson(this);
 }

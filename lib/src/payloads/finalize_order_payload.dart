@@ -8,7 +8,5 @@ class FinalizeOrderPayload implements JwsPayload {
   final String _csr;
 
   @override
-  String get stringContent => json.encode({
-        'csr': _csr,
-      });
+  String get stringContent => json.encode({'csr': _csr});
 }

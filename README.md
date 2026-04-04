@@ -49,58 +49,100 @@ Import the package with :
 import 'package:acme_client/acme_client.dart';
 ```
 
-## Acme Client
+## Acme Connection
 
 This is a simple ACME written in Dart based on the [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555). The client should be able to communicate with every ACME server that is based on the mentioned RFC including **Let's Encrypt**.
 
-### Client Setup
+### Connection Setup
 
-Create a new client by calling the constructor and pass the appropriate parameters.
+Create an `AcmeConnection` and either generate fresh
+`AcmeAccountCredentials` or restore previously persisted credentials.
 
 ```dart
-  var client = AcmeClient(
-    'https://acme-server.com',
-    privateKeyPem,
-    publicKeyPem,
-    true,
-    ['mailto:jon@doe.com'],
+  const connection = AcmeConnection(
+    baseUrl: 'https://acme-server.com',
+  );
+
+  final credentials = AcmeAccountCredentials.generate(
+    acceptTerms: true,
+    contacts: ['mailto:jon@doe.com'],
   );
 ```
 
-- baseUrl = The base URL of the ACME server, or the full ACME directory URL such as Pebble's `https://localhost:14000/dir`.
-- privateKeyPem = The private key in PEM format.
-- publicKeyPem  = The public key in PEM format.
-- acceptTerms = Accept terms and condition while creating / fetching an account.
-- contacts = A list of email addresses. Each address should have the format `mailto:jon@doe.com`.
-- dio = Optional advanced transport override. Most production callers should not pass this. It is mainly useful for tests or special environments such as local Pebble, custom TLS trust, or proxies.
+- `AcmeConnection.baseUrl` = The ACME directory URL, such as Pebble's `https://localhost:14000/dir`.
+- `AcmeConnection.dio` = Optional advanced transport override. Most production callers should not pass this. It is mainly useful for tests or special environments such as local Pebble, custom TLS trust, or proxies.
+- `AcmeAccountCredentials.privateKeyPem` = The private key in PEM format.
+- `AcmeAccountCredentials.publicKeyPem` = The public key in PEM format.
+- `AcmeAccountCredentials.acceptTerms` = Accept terms and condition while creating / fetching an account.
+- `AcmeAccountCredentials.contacts` = A list of email addresses. Each address should have the format `mailto:jon@doe.com`.
 
-**Note**: If you want to create a RSA/ECC key pair with Dart, take a look at the [Basic Utils](https://github.com/Ephenodrom/Dart-Basic-Utils) Package. The X509Utils and CryptoUtils, contain everything needed for creating a key pair and formating it to PEM.
-
-After the client is setup, call the **init()** method, to fetch the directories and account information from the server. If there is no account for the given public key on the server, the client will create a new account.
+If you already persisted credentials, restore them with:
 
 ```dart
-  await client.init();
+  final credentials = AcmeAccountCredentials.fromJson(jsonString);
+```
+
+If you are using the default Let's Encrypt production endpoint, you can omit the
+connection argument entirely.
+
+Standard connection presets are available for common cases:
+
+```dart
+  const production = AcmeConnection.production;
+  const staging = AcmeConnection.staging;
+```
+
+Fetch the existing account:
+
+```dart
+  var account = await Account.fetch(credentials);
+```
+
+To force creation of a new account instead of looking up an existing one:
+
+```dart
+  var account = await Account.create(credentials);
+```
+
+To persist the account identity inputs needed to resume later operations such as
+renewals, round-trip `AcmeAccountCredentials`:
+
+```dart
+  final jsonString = credentials.toJson(pretty: true);
+
+  // Persist `jsonString`, then later restore it.
+  final restoredCredentials = AcmeAccountCredentials.fromJson(jsonString);
+  final restoredAccount = await Account.fetch(
+    restoredCredentials,
+    connection: connection,
+  );
+```
+
+If you already have an attached `Account`, you can derive the same credentials:
+
+```dart
+  final credentials = account.toAccountCredentials();
 ```
 
 ## Applying for Certificate Issuance
 
 ### Place Order
 
-Placing an order can be done by creating a new order object and adding the identifiers that should be placed in the certificate. The order methode of the client will then return the order information returned by the acme server.
+Placing an order can be done by creating a new order object and adding the identifiers that should be placed in the certificate. The account then creates the order and returns the order information from the ACME server.
 
 ```dart
   var order = Order(
-    identifiers: [Identifiers(type: 'dns', value: 'example.com')]
+    identifiers: [DomainIdentifier('example.com')]
   );
-  var newOrder = await client.order(order);
+  var newOrder = await account.createOrder(order);
 ```
 
 ### Fetch Authorization Data
 
-For each order, the ACME server return an authorization data for each identifier if requested via the **getAuthorization()** method..
+For each order, the ACME server returns authorization data for each identifier when requested via **Order.getAuthorizations()**.
 
 ```dart
-  var auth = await client.getAuthorization(newOrder!);
+  var auth = await newOrder.getAuthorizations();
 ```
 
 ### Get Challenge For Authorization
@@ -109,32 +151,45 @@ For each returned authorization there are multiple challenges. You can use one o
 
 ```dart
   for(var a in auth){
-     var data = a.getHttpDcvData();
+     var challenge = Challenge.get<HttpChallenge>(a.challenges!);
+     var data = challenge.buildChallengeData(
+       domainIdentifier: a.identifier! as DomainIdentifier,
+       publicKeyPem: credentials.publicKeyPem,
+     );
   }
 
   for(var a in auth){
-     var data = a.getDnsDcvData();
+     var challenge = Challenge.get<DnsChallenge>(a.challenges!);
+     var data = challenge.buildChallengeData(
+       domainIdentifier: a.identifier! as DomainIdentifier,
+       publicKeyPem: credentials.publicKeyPem,
+     );
   }
 ```
 
 ### dns-persist-01
 
-If the ACME server offers `dns-persist-01`, use the client helper to build the
-TXT record from the active account binding. The client derives
-`accounturi=<account-url>` automatically from the current ACME account.
+If the ACME server offers `dns-persist-01`, fetch the authorizations for the
+order, ask the order for the concrete `DnsPersistChallenge`, and then build the
+TXT record from that challenge.
 
 ```dart
-  var persistData = await client.getDnsPersistDcvDataForOrder(
-    newOrder,
-    identifier: 'example.com',
+  var authorizations = await newOrder.getAuthorizations();
+  var domainIdentifier = DomainIdentifier('example.com');
+  var challenge = newOrder.getChallengeForIdentifier<DnsPersistChallenge>(
+    domainIdentifier,
+    authorizations,
+  );
+  var persistData = challenge.buildDnsPersistChallengeData(
+    domainIdentifier: domainIdentifier,
+    accountUri: account.accountURL!,
     issuerDomainName: 'ca.example',
-    policy: 'wildcard',
   );
 
   print(persistData.toBindString());
 ```
 
-The returned `DnsPersistDcvData` contains the TXT record to publish at
+The returned `DnsPersistChallengeData` contains the TXT record to publish at
 `_validation-persist.<fqdn>`.
 
 ### Self Test
@@ -144,12 +199,12 @@ It is recommended to check in advance if a challenge is passed by using the appr
 **Note**: The DNS self test uses the Google DNS Rest API to fetch the resource records.
 
 ```dart
-  var self = await client.selfDNSTest(data); // DnsDcvData
+  var self = await account.selfDNSTest(data); // DnsChallengeData
   if (!self) {
     print('Selftest failed, no DNS record found');
   }
 
-  var self = await client.selfHttpTest(data); // HttpDcvData
+  var self = await account.selfHttpTest(data); // HttpChallengeData
   if (!self) {
     print('Selftest failed, no file found or content missmatch');
   }
@@ -161,12 +216,14 @@ is visible to the CA, and then call `validate(persistData.challenge)`.
 
 ### Trigger Validation
 
-To tell the ACME server to check the challenge, call the validate() method on the client with the desired challenge. This will trigger the validation and check every 4 seconds the status of the authorization to change to "valid".
+To tell the ACME server to check the challenge, call `validate()` on the
+account with the desired challenge. This will trigger the validation and check
+every 4 seconds the status of the authorization to change to "valid".
 Via the maxAttempts parameter you can increase or decrease the amount of time it will poll the status. The default is 15.
 
 ```dart
-  var data; // HttpDcvData or DnsDcvData
-  var authValid = await client.validate(data.challenge);
+  var data; // HttpChallengeData or DnsChallengeData
+  var authValid = await account.validate(data.challenge);
   if (!authValid) {
     print('Authorization failed, exit');
   }
@@ -174,18 +231,25 @@ Via the maxAttempts parameter you can increase or decrease the amount of time it
 
 ### Finalize Order
 
-If every authorization has the status "valid" finalize the order by sending a CSR to acme server. The CSR will automatically formated according to the RFC rules (base64Url encoded without headers).
+If every authorization has the status "valid", check that the order is ready and then finalize it by sending a CSR to the ACME server. The CSR is automatically formatted according to the RFC rules (base64Url encoded without headers).
 
 ```dart
-var finalOrder = await client.finalizeOrder(newOrder, csr);
+var ready = await newOrder.isReady();
+if (!ready) {
+  print('Order is not ready');
+}
+```
+
+```dart
+var finalOrder = await newOrder.finalize(csr);
 ```
 
 ### Fetch Certificate
 
-A list of certificates can then be fetched via the **getCertificate()** method by passing the finalized order object.
+A list of certificates can then be fetched directly from the finalized order.
 
 ```dart
-var certs = await client.getCertificate(finalOrder);
+var certs = await finalOrder.getCertificates();
 ```
 
 ## Changelog
