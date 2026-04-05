@@ -68,7 +68,9 @@ class ChallengeOrder<TChallenge extends Challenge> {
     final certificateIdentifiers = credentials.identifiers
         .map((identifier) => identifier.value)
         .toSet();
-    if (orderIdentifiers.isNotEmpty && orderIdentifiers != certificateIdentifiers) {
+    if (orderIdentifiers.isNotEmpty &&
+        (orderIdentifiers.length != certificateIdentifiers.length ||
+            !orderIdentifiers.containsAll(certificateIdentifiers))) {
       throw const AcmeConfigurationException(
         'Certificate credentials do not match the identifiers on this order',
       );

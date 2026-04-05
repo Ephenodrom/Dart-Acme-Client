@@ -2,7 +2,9 @@ import 'package:acme_client/acme_client.dart';
 import 'package:acme_client/src/acme_connection.dart';
 import 'package:acme_client/src/model/account.dart';
 import 'package:acme_client/src/model/acme_directories.dart';
+import 'package:acme_client/src/model/challenge_validation.dart';
 import 'package:acme_client/src/model/order.dart';
+import 'package:acme_client/src/payloads/empty_validation_payload.dart';
 import 'package:acme_client/src/wire/account_resource.dart';
 import 'package:acme_client/src/wire/challenge_resource.dart';
 import 'package:dio/dio.dart';
@@ -49,6 +51,47 @@ void main() {
       expect(challenge.issuerDomainNames, isEmpty);
     },
   );
+
+  test('challenge validation uses empty payloads for supported challenge types',
+      () {
+    expect(
+      acmeChallengeCreateValidationPayload(
+        DnsChallenge(token: 'token', url: 'https://ca.example/challenge/1'),
+      ),
+      isA<EmptyValidationPayload>(),
+    );
+    expect(
+      acmeChallengeCreateValidationPayload(
+        HttpChallenge(token: 'token', url: 'https://ca.example/challenge/2'),
+      ),
+      isA<EmptyValidationPayload>(),
+    );
+    expect(
+      acmeChallengeCreateValidationPayload(
+        DnsPersistChallenge(
+          token: 'token',
+          url: 'https://ca.example/challenge/3',
+          issuerDomainNames: const ['issuer.example.net'],
+        ),
+      ),
+      isA<EmptyValidationPayload>(),
+    );
+  });
+
+  test('unsupported challenge types are ignored during list parsing', () {
+    final resources = acmeChallengeResourceListFromValue([
+      {'type': 'dns-account-01', 'token': 'ignored'},
+      {
+        'type': 'dns-persist-01',
+        'token': 'kept',
+        'issuer-domain-names': ['issuer.example.net'],
+      },
+    ]);
+
+    expect(resources, hasLength(1));
+    expect(resources!.single.type, ChallengeType.dnsPersist);
+    expect(resources.single.token, 'kept');
+  });
 
   test(
     'discoverAvailableChallenges de-duplicates repeated challenge types',
@@ -250,6 +293,126 @@ void main() {
           contains('do not match the identifiers on this order'),
         ),
       ),
+    );
+  });
+
+  test(
+    'ChallengeOrder.finalize accepts matching identifiers by value',
+    () async {
+    final dio = _buildMockDio((options) {
+      switch ('${options.method} ${options.uri}') {
+        case 'POST https://ca.example/acme/order/1/finalize':
+          return _jsonResponse(options, {
+            'status': 'valid',
+            'certificate': 'https://ca.example/acme/cert/1',
+            'authorizations': ['https://ca.example/acme/authz/1'],
+            'finalize': 'https://ca.example/acme/order/1/finalize',
+            'identifiers': [
+              {'type': 'dns', 'value': 'example.com'},
+            ],
+          });
+      }
+      throw StateError('Unexpected request: ${options.method} ${options.uri}');
+    });
+
+    final connection = _boundConnection(dio);
+    acmeConnectionTestSetDirectories(
+      connection,
+      AcmeDirectories(newNonce: 'https://ca.example/acme/new-nonce'),
+    );
+    acmeConnectionTestSetNonce(connection, 'nonce-1');
+
+    final account = acmeAccountAttachConnection(
+      Account(accountURL: 'https://ca.example/acme/acct/1'),
+      connection,
+    );
+    final order = acmeOrderAttachConnection(
+      Order(
+        identifiers: const [DomainIdentifier('example.com')],
+        finalizeUrl: 'https://ca.example/acme/order/1/finalize',
+        orderUrl: 'https://ca.example/acme/order/1',
+      ),
+      connection,
+      account,
+    );
+    final challengeOrder = ChallengeOrder<HttpChallenge>.internal(
+      order,
+      connection,
+      account,
+    );
+    final credentials = CertificateCredentials.generate(
+      identifiers: const [DomainIdentifier('example.com')],
+    );
+
+    await expectLater(challengeOrder.finalize(credentials), completes);
+  });
+
+  test('Order.finalize polls order status using signed POST-as-GET', () async {
+    final requests = <String>[];
+    final dio = _buildMockDio((options) {
+      requests.add('${options.method} ${options.uri}');
+      switch ('${options.method} ${options.uri}') {
+        case 'POST https://ca.example/acme/order/1/finalize':
+          return _jsonResponse(options, {
+            'status': 'processing',
+            'authorizations': ['https://ca.example/acme/authz/1'],
+            'finalize': 'https://ca.example/acme/order/1/finalize',
+            'identifiers': [
+              {'type': 'dns', 'value': 'example.com'},
+            ],
+          });
+        case 'POST https://ca.example/acme/order/1':
+          return _jsonResponse(options, {
+            'status': 'valid',
+            'certificate': 'https://ca.example/acme/cert/1',
+            'authorizations': ['https://ca.example/acme/authz/1'],
+            'finalize': 'https://ca.example/acme/order/1/finalize',
+            'identifiers': [
+              {'type': 'dns', 'value': 'example.com'},
+            ],
+          });
+      }
+      throw StateError('Unexpected request: ${options.method} ${options.uri}');
+    });
+
+    final connection = _boundConnection(dio);
+    acmeConnectionTestSetDirectories(
+      connection,
+      AcmeDirectories(newNonce: 'https://ca.example/acme/new-nonce'),
+    );
+    acmeConnectionTestSetNonce(connection, 'nonce-1');
+
+    final account = acmeAccountAttachConnection(
+      Account(accountURL: 'https://ca.example/acme/acct/1'),
+      connection,
+    );
+    final order = acmeOrderAttachConnection(
+      Order(
+        identifiers: const [DomainIdentifier('example.com')],
+        finalizeUrl: 'https://ca.example/acme/order/1/finalize',
+        orderUrl: 'https://ca.example/acme/order/1',
+      ),
+      connection,
+      account,
+    );
+
+    final credentials = CertificateCredentials.generate(
+      identifiers: const [DomainIdentifier('example.com')],
+    );
+
+    final finalizedOrder = await order.finalize(credentials.csrPem, retries: 2);
+
+    expect(finalizedOrder.certificate, 'https://ca.example/acme/cert/1');
+    expect(
+      requests,
+      containsAllInOrder([
+        'POST https://ca.example/acme/order/1/finalize',
+        'POST https://ca.example/acme/order/1',
+      ]),
+    );
+    expect(
+      requests,
+      isNot(contains('GET https://ca.example/acme/order/1')),
     );
   });
 }

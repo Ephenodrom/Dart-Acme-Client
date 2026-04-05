@@ -27,16 +27,27 @@ class ChallengeResource {
   final String? token;
   final List<String> issuerDomainNames;
 
-  factory ChallengeResource._fromMap(Map<String, dynamic> json) =>
-      ChallengeResource(
-        type: ChallengeTypeWireValue.fromWireValue(json['type'] as String),
-        url: json['url'] as String?,
-        status: json['status'] as String?,
-        token: json['token'] as String?,
-        issuerDomainNames:
-            (json['issuer-domain-names'] as List<Object?>?)?.cast<String>() ??
-            const [],
+  factory ChallengeResource._fromMap(Map<String, dynamic> json) {
+    final type = ChallengeTypeWireValue.tryFromWireValue(
+      json['type'] as String,
+    );
+    if (type == null) {
+      throw ArgumentError.value(
+        json['type'],
+        'type',
+        'Unsupported challenge type',
       );
+    }
+    return ChallengeResource(
+      type: type,
+      url: json['url'] as String?,
+      status: json['status'] as String?,
+      token: json['token'] as String?,
+      issuerDomainNames:
+          (json['issuer-domain-names'] as List<Object?>?)?.cast<String>() ??
+          const [],
+    );
+  }
 
   Challenge _toDomain() => switch (type) {
     ChallengeType.dns => DnsChallenge(url: url, status: status, token: token),
@@ -64,10 +75,16 @@ ChallengeResource acmeChallengeResourceFromMap(Map<String, dynamic> json) =>
 List<ChallengeResource>? acmeChallengeResourceListFromValue(Object? value) =>
     value is List
     ? value
-          .map(
-            (challenge) =>
-                acmeChallengeResourceFromMap(challenge as Map<String, dynamic>),
-          )
+          .map((challenge) => challenge as Map<String, dynamic>)
+          .map((challenge) {
+            final type = challenge['type'];
+            if (type is! String ||
+                ChallengeTypeWireValue.tryFromWireValue(type) == null) {
+              return null;
+            }
+            return acmeChallengeResourceFromMap(challenge);
+          })
+          .whereType<ChallengeResource>()
           .toList()
     : null;
 

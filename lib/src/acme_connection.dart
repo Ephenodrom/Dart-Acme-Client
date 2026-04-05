@@ -113,10 +113,7 @@ class AcmeConnection {
 
   Future<bool> _validate(Challenge challenge, {int maxAttempts = 15}) async {
     final session = _requireSession();
-    final validationPayload = acmeChallengeCreateValidationPayload(
-      challenge,
-      accountKeyDigestProvider: () => _accountKeyDigest,
-    );
+    final validationPayload = acmeChallengeCreateValidationPayload(challenge);
     final jws = await session.jwsManager.createJws(
       challenge.url!,
       newNonceUrl: session.directories?.newNonce,

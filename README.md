@@ -37,6 +37,11 @@ temporarily block further certificate issuance for the same account, domain, or
 set of domains. See Let's Encrypt's rate limit documentation before running
 automated tests or retries against production.
 
+**Recommendation:** If your CA supports `dns-persist-01`, prefer it over
+`dns-01` and `http-01`. It gives you a stable delegated DNS validation record
+that can be published once and then reused for both initial issuance and
+renewals with the same ACME account.
+
 ## Install
 
 ### pubspec.yaml
@@ -45,7 +50,7 @@ Update pubspec.yaml and add the following line to your dependencies.
 
 ```yaml
 dependencies:
-  acme_client: ^1.3.0
+  acme_client: ^2.0.0
 ```
 
 ## Import
@@ -230,8 +235,12 @@ Complete typed examples are available in:
 
 ### dns-persist-01
 
-Note: as of 2026-04 dns-persist-01 has not been released into production.
-It is anticipated it will be available by late 2026.
+`dns-persist-01` is the recommended challenge type when your CA supports it.
+Unlike `dns-01`, it is designed for a long-lived delegated TXT record, so the
+same DNS setup can usually be reused across both initial issuance and renewal.
+
+Note: as of 2026-04 `dns-persist-01` has not been released into production. It
+is anticipated it will be available by late 2026.
 
 If the ACME server offers `dns-persist-01`, fetch the authorizations for the
 order, ask the order for the concrete `DnsPersistChallenge`, and then build the
@@ -251,6 +260,18 @@ TXT record from that challenge.
 
 The returned `DnsPersistChallengeProof` contains the TXT record to publish at
 `_validation-persist.<fqdn>`.
+
+Treat that TXT record as tied to your ACME account identity.
+
+- Keep using the same persisted `AcmeAccountCredentials` if you want to keep
+  reusing the same `dns-persist-01` record.
+- If you create a different ACME account, the `accounturi=...` part of the TXT
+  record changes and you must publish a new record before validating again.
+- Rotating `CertificateCredentials` or generating a new CSR does not by itself
+  change the `dns-persist-01` TXT record. The certificate keypair is separate
+  from the ACME account.
+- If the domain name changes, or if the CA returns different proof parameters,
+  publish the new TXT record returned by `challenge.buildProof()`.
 
 ### Self Test
 
@@ -327,6 +348,11 @@ var certs = await newOrder.getCertificates();
 For renewals, keep using the same `AcmeAccountCredentials`. That is your ACME
 account identity and should normally be long-lived.
 
+If you are using `dns-persist-01`, keeping the same ACME account is especially
+important because the persistent TXT record is tied to that account's URI. If
+you switch to a different account later, you must publish the new TXT record
+before validation can succeed.
+
 For `CertificateCredentials`, you have two valid choices:
 
 - Reuse the same stored `CertificateCredentials` if you want the renewed certificate to keep the same private key.
@@ -351,8 +377,14 @@ For local integration testing with Pebble and `challtestsrv`, see
 
 - a local Docker Compose harness
 - a Pebble config file
-- an end-to-end `dns-persist-01` test in
-  [test/dns_persist_pebble_test.dart](test/dns_persist_pebble_test.dart)
+- end-to-end acquisition and renewal tests for `http-01`, `dns-01`, and
+  `dns-persist-01` in
+  [test/pebble_integration_test.dart](test/pebble_integration_test.dart)
+
+For live Let's Encrypt staging inspection and `dns-persist-01` system tests,
+see [tool/le-staging/README.md](tool/le-staging/README.md). The staging test
+reads its settings from an untracked YAML file at
+`tool/le-staging/le-staging.local.yaml`.
 
 For a detailed changelog, see the [CHANGELOG.md](CHANGELOG.md) file
 

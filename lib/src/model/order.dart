@@ -328,11 +328,24 @@ class Order {
   /// @Throwing(AcmeOrderException, reason: 'polling the finalized order failed')
   Future<_OrderResults> _pollFinalizedOrder(AcmeConnection connection) async {
     await Future.delayed(const Duration(seconds: 4), () {});
+    final account = _requireAccount();
+    final jws = await acmeConnectionJwsManager(connection).createJws(
+      orderUrl!,
+      newNonceUrl: acmeConnectionDirectories(connection)!.newNonce,
+      accountUrl: account.accountURL,
+      useKid: true,
+    );
+    final body = json.encode(jws.toJson());
+    const headers = {'Content-Type': 'application/jose+json'};
 
     try {
-      final response = await acmeConnectionResolvedDio(
-        connection,
-      ).get<Map<String, Object?>>(orderUrl!);
+      final response = await acmeConnectionResolvedDio(connection)
+          .post<Object?>(
+            orderUrl!,
+            data: body,
+            options: Options(headers: headers),
+          );
+      acmeConnectionJwsManager(connection).updateNonce(response);
       final persistent = acmeOrderFromResponseMap(
         response.data! as Map<String, dynamic>,
       );

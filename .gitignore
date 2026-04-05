@@ -12,3 +12,5 @@ pubspec.lock
 .mcp_logs/mcp_command_server.log
 logs/analyzer.txt
 tool/pebble/pebble-test.local.json
+tool/le-staging/le-staging.local.yaml
+doc/api/

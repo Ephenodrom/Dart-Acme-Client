@@ -1,6 +1,5 @@
 import '../acme_client_exception.dart';
 import '../payloads/empty_validation_payload.dart';
-import '../payloads/key_authorization_validation_payload.dart';
 import '../payloads/validation_payload.dart';
 import 'challenge.dart';
 import 'dns_challenge.dart';
@@ -8,19 +7,14 @@ import 'dns_persist_challenge.dart';
 import 'http_challenge.dart';
 
 ValidationPayload acmeChallengeCreateValidationPayload(
-  Challenge challenge, {
-  required String Function() accountKeyDigestProvider,
-}) {
+  Challenge challenge,
+) {
   if (challenge case DnsChallenge()) {
-    return KeyAuthorizationValidationPayload(
-      challenge.buildKeyAuthorization(accountKeyDigestProvider()),
-    );
+    return const EmptyValidationPayload();
   }
 
   if (challenge case HttpChallenge()) {
-    return KeyAuthorizationValidationPayload(
-      challenge.buildKeyAuthorization(accountKeyDigestProvider()),
-    );
+    return const EmptyValidationPayload();
   }
 
   if (challenge case DnsPersistChallenge()) {

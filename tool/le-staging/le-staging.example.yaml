@@ -1,0 +1,18 @@
+enabled: true
+
+# A public domain used only for challenge inspection. This does not need to be
+# under your control if the CA allows order creation for it.
+identifier: mydomain.dev
+
+# Contact email for the temporary staging account created by the system test.
+contact: mailto:staging-test@mydomain.dev
+
+# Full dns-persist-01 issuance/renewal test settings.
+dnsPersist:
+  # Use a dedicated hostname you control, for example:
+  # acme-staging.mydomain.dev
+  identifier: acme-staging.mydomain.dev
+
+  cloudflare:
+    zoneName: mydomain.dev
+    apiToken: <cloud flare token>

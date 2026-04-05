@@ -7,6 +7,13 @@ extension ChallengeTypeWireValue on ChallengeType {
     ChallengeType.dnsPersist => 'dns-persist-01',
   };
 
+  static ChallengeType? tryFromWireValue(String value) => switch (value) {
+    'dns-01' => ChallengeType.dns,
+    'http-01' => ChallengeType.http,
+    'dns-persist-01' => ChallengeType.dnsPersist,
+    _ => null,
+  };
+
   static ChallengeType fromWireValue(String value) => switch (value) {
     'dns-01' => ChallengeType.dns,
     'http-01' => ChallengeType.http,
