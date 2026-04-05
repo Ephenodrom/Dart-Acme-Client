@@ -30,6 +30,13 @@ As this package is written in pure [Dart](https://dart.dev), it can be used on a
 
 **Note:** Feel free to contribute by creating pull requests or file an issue for bugs, questions and feature requests.
 
+**Warning:** Let's Encrypt production enforces rate limits. While developing or
+testing, prefer `AcmeConnection.staging` or local Pebble rather than the
+production endpoint. Repeated failed experiments against production can
+temporarily block further certificate issuance for the same account, domain, or
+set of domains. See Let's Encrypt's rate limit documentation before running
+automated tests or retries against production.
+
 ## Install
 
 ### pubspec.yaml
@@ -190,7 +197,7 @@ For a complete discovery workflow, see
 
 ### Get Challenge For Authorization
 
-For each returned authorization there are multiple challenges. You can use one of these challenges to prove controll over one identifier and fulfill the authorization request.
+For each returned authorization there are multiple challenges. You can use one of these challenges to prove control over one identifier and fulfill the authorization request.
 
 ```dart
   var httpOrder = await account.createOrderForHttp(
@@ -222,6 +229,9 @@ Complete typed examples are available in:
 - `example/dns_persist_renewal_example.dart`
 
 ### dns-persist-01
+
+Note: as of 2026-04 dns-persist-01 has not been released into production.
+It is anticipated it will be available by late 2026.
 
 If the ACME server offers `dns-persist-01`, fetch the authorizations for the
 order, ask the order for the concrete `DnsPersistChallenge`, and then build the
