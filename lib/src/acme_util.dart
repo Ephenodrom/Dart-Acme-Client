@@ -7,15 +7,15 @@ import 'package:jose/jose.dart';
 class AcmeUtils {
   /// @Throwing(ArgumentError, reason: 'the supplied JWK cannot be converted into a stable digest input')
   static String getDigest(JsonWebKey key) {
-    var keyAsJson = key.toJson();
-    var sortedKeys = keyAsJson.keys.toList()..sort();
-    var sortedJson = {};
-    for (var k in sortedKeys) {
+    final keyAsJson = key.toJson();
+    final sortedKeys = keyAsJson.keys.toList()..sort();
+    final sortedJson = <String, dynamic>{};
+    for (final k in sortedKeys) {
       sortedJson.putIfAbsent(k, () => keyAsJson[k]);
     }
-    var j = json.encode(sortedJson);
-    var plain = CryptoUtils.getHashPlain(Uint8List.fromList(j.codeUnits));
-    var digest = base64Url.encode(plain).replaceAll('=', '');
+    final j = json.encode(sortedJson);
+    final plain = CryptoUtils.getHashPlain(Uint8List.fromList(j.codeUnits));
+    final digest = base64Url.encode(plain).replaceAll('=', '');
     return digest;
   }
 
@@ -24,9 +24,11 @@ class AcmeUtils {
     csr = csr.replaceAll(X509Utils.END_CSR, '');
     csr = csr.replaceAll(X509Utils.BEGIN_NEW_CSR, '');
     csr = csr.replaceAll(X509Utils.END_NEW_CSR, '');
-    var lines = LineSplitter.split(csr);
-    var b64 = lines.join();
-    var bytes = base64.decode(b64);
+    final lines = LineSplitter.split(csr);
+    final b64 = lines.join();
+    final bytes = base64.decode(b64);
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 }
+// Internal helpers stay as static members to keep ACME payload transformations centralized.
+// ignore_for_file: avoid_classes_with_only_static_members, lines_longer_than_80_chars

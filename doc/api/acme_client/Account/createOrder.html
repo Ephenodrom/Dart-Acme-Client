@@ -54,7 +54,7 @@
 
     <section class="multi-line-signature">
       
-<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-core/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Order-class.html">Order</a></span>&gt;</span></span>
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Order-class.html">Order</a></span>&gt;</span></span>
 <span class="name ">createOrder</span>(<wbr><ol class="parameter-list single-line"> <li><span class="parameter" id="createOrder-param-order"><span class="type-annotation"><a href="../../acme_client/Order-class.html">Order</a></span> <span class="parameter-name">order</span></span></li>
 </ol>)
 
@@ -72,12 +72,11 @@
     
 <section class="summary source-code" id="source">
   <h2><span>Implementation</span></h2>
-  <pre class="language-dart"><code class="language-dart">Future&lt;Order&gt; createOrder(Order order) async =&gt;
-    acmeOrderAttachConnection(
-      await acmeOrderCreate(_requireConnection(), this, order),
-      _requireConnection(),
-      this,
-    );</code></pre>
+  <pre class="language-dart"><code class="language-dart">Future&lt;Order&gt; createOrder(Order order) async =&gt; acmeOrderAttachConnection(
+  await acmeOrderCreate(_requireConnection(), this, order),
+  _requireConnection(),
+  this,
+);</code></pre>
 </section>
 
 

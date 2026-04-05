@@ -54,7 +54,7 @@
 
     <section class="multi-line-signature">
       
-<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-core/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Account-class.html">Account</a></span>&gt;</span></span>
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Account-class.html">Account</a></span>&gt;</span></span>
 <span class="name ">create</span>(<wbr><ol class="parameter-list"> <li><span class="parameter" id="create-param-credentials"><span class="type-annotation"><a href="../../acme_client/AcmeAccountCredentials-class.html">AcmeAccountCredentials</a></span> <span class="parameter-name">credentials</span>, {</span></li>
 <li><span class="parameter" id="create-param-connection"><span class="type-annotation"><a href="../../acme_client/AcmeConnection-class.html">AcmeConnection</a></span> <span class="parameter-name">connection</span> = <span class="default-value">const AcmeConnection.letsEncrypt()</span>, </span></li>
 </ol>})
@@ -107,10 +107,10 @@
     );
   } on DioException catch (e, s) {
     acmeConnectionJwsManager(boundConnection).captureErrorNonce(e);
-    throw AcmeClientException.wrapDioException(
+    throw acmeWrapDioException(
       e,
       &#39;Failed to create ACME account&#39;,
-      AcmeAccountException.fromDioException,
+      acmeAccountExceptionFromDioException,
       onWrapped: (wrapped) =&gt; boundConnection.logger?.call(
         AcmeLogLevel.error,
         wrapped.message,

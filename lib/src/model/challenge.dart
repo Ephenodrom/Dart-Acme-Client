@@ -1,21 +1,21 @@
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/model/challenge_type.dart';
-import 'package:acme_client/src/payloads/validation_payload.dart';
+import '../acme_client_exception.dart';
+import '../acme_connection.dart';
+import 'account.dart';
+import 'challenge_type.dart';
+import 'identifiers.dart';
+import 'key_authorization.dart';
 
 abstract class Challenge {
-  Challenge({
-    this.url,
-    this.status,
-    this.token,
-    this.issuerDomainNames,
-    this.authorizationUrl,
-  });
+  Challenge({this.url, this.status, this.token, this.authorizationUrl});
 
   final String? url;
   final String? status;
   final String? token;
-  final List<String>? issuerDomainNames;
+
   String? authorizationUrl;
+  AcmeConnection? _connection;
+  Account? _account;
+  Identifier? _identifier;
 
   ChallengeType get challengeType;
 
@@ -44,10 +44,6 @@ abstract class Challenge {
     return null;
   }
 
-  ValidationPayload createValidationPayload({
-    required String Function() accountKeyDigestProvider,
-  });
-
   String requireToken() {
     final challengeToken = token;
     if (challengeToken == null || challengeToken.isEmpty) {
@@ -59,10 +55,55 @@ abstract class Challenge {
     return challengeToken;
   }
 
-  String buildKeyAuthorization(String accountKeyDigest) =>
-      '${requireToken()}.$accountKeyDigest';
+  KeyAuthorization buildKeyAuthorization(String accountKeyDigest) =>
+      KeyAuthorization(
+        token: requireToken(),
+        accountKeyDigest: accountKeyDigest,
+      );
+
+  Future<bool> validate({int maxAttempts = 15}) => acmeConnectionValidate(
+    requireConnection(),
+    this,
+    maxAttempts: maxAttempts,
+  );
+
+  Challenge _attachExecutionContext({
+    required AcmeConnection connection,
+    required Account account,
+    required Identifier identifier,
+  }) {
+    _connection = connection;
+    _account = account;
+    _identifier = identifier;
+    return this;
+  }
+
+  AcmeConnection requireConnection() =>
+      _connection ??
+      (throw StateError('Challenge is not attached to an ACME connection'));
+
+  Account requireAccount() =>
+      _account ??
+      (throw StateError('Challenge is not attached to an ACME account'));
+
+  Identifier requireIdentifier() =>
+      _identifier ??
+      (throw StateError('Challenge is not attached to an identifier'));
 }
 
 abstract class AuthorizationLike {
   List<Challenge>? get challenges;
 }
+
+Challenge acmeChallengeAttachExecutionContext(
+  Challenge challenge, {
+  required AcmeConnection connection,
+  required Account account,
+  required Identifier identifier,
+}) => challenge._attachExecutionContext(
+  connection: connection,
+  account: account,
+  identifier: identifier,
+);
+// The fluent attachment helper intentionally returns the same instance.
+// ignore_for_file: avoid_returning_this

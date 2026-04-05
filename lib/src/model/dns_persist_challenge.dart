@@ -1,70 +1,74 @@
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/model/challenge.dart';
-import 'package:acme_client/src/model/challenge_type.dart';
-import 'package:acme_client/src/model/dns_persist_challenge_data.dart';
-import 'package:acme_client/src/model/dns_persist_policy.dart';
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/payloads/empty_validation_payload.dart';
-import 'package:acme_client/src/payloads/validation_payload.dart';
+import 'package:meta/meta.dart';
 
+import '../../acme_client.dart' show ChallengeAuthorization;
+import '../acme_client_exception.dart';
+import '../acme_connection.dart';
+import 'challenge.dart';
+import 'challenge_order.dart' show ChallengeAuthorization;
+import 'challenge_type.dart';
+import 'dns_persist_challenge_proof.dart';
+import 'identifiers.dart';
+
+/// A `dns-persist-01` challenge returned by the CA for one identifier.
+///
+/// This challenge is used for persistent delegated DNS validation. In the
+/// normal flow you obtain it from a [ChallengeAuthorization], call [buildProof]
+/// to get the TXT record to publish, optionally call [selfTest], and then call
+/// [validate].
 class DnsPersistChallenge extends Challenge {
+  @internal
   DnsPersistChallenge({
     super.url,
     super.status,
     super.token,
-    super.issuerDomainNames,
+    this.issuerDomainNames = const [],
     super.authorizationUrl,
   });
+
+  final List<String> issuerDomainNames;
 
   @override
   ChallengeType get challengeType => ChallengeType.dnsPersist;
 
-  @override
-  ValidationPayload createValidationPayload({
-    required String Function() accountKeyDigestProvider,
-  }) {
-    final issuers = issuerDomainNames;
-    if (issuers == null || issuers.isEmpty) {
-      throw AcmeDnsPersistException(
-        'ACME dns-persist-01 challenge is missing issuer-domain-names',
-        uri: Uri.tryParse(url ?? authorizationUrl ?? ''),
-      );
-    }
-    return const EmptyValidationPayload();
-  }
-
-  DnsPersistChallengeData buildDnsPersistChallengeData({
-    required DomainIdentifier domainIdentifier,
-    required String accountUri,
-    String? issuerDomainName,
-    DnsPersistPolicy policy = DnsPersistPolicy.wildcard,
-    DateTime? persistUntil,
-  }) {
-    final issuers = issuerDomainNames;
-    if (issuers == null || issuers.isEmpty) {
+  /// Builds the persistent DNS proof record the caller must publish for this
+  /// `dns-persist-01` challenge using the execution context attached to the
+  /// challenge.
+  ///
+  /// The first issuer-domain-name offered by the CA is selected automatically
+  /// and the default persistence policy is FQDN-only.
+  ///
+  /// The returned proof tells you exactly what persistent TXT record to
+  /// publish before validation begins.
+  DnsPersistChallengeProof buildProof() {
+    final domainIdentifier = requireIdentifier() as DomainIdentifier;
+    final accountUri = requireAccount().accountURL!;
+    if (issuerDomainNames.isEmpty) {
       throw AcmeDnsPersistException(
         'ACME dns-persist-01 challenge is missing issuer-domain-names',
         uri: Uri.tryParse(url ?? authorizationUrl ?? ''),
       );
     }
 
-    final selectedIssuer = issuerDomainName ?? issuers.first;
-    if (!issuers.contains(selectedIssuer)) {
-      throw AcmeDnsPersistException(
-        'Requested issuer-domain-name is not offered by the ACME challenge',
-        uri: Uri.tryParse(url ?? authorizationUrl ?? ''),
-        detail: selectedIssuer,
-        rawBody: issuers,
-      );
-    }
-
-    return DnsPersistChallengeData.forAuthorization(
+    return DnsPersistChallengeProof.forAuthorization(
       domainIdentifier: domainIdentifier,
       challenge: this,
-      issuerDomainName: selectedIssuer,
+      issuerDomainName: issuerDomainNames.first,
       accountUri: accountUri,
-      policy: policy,
-      persistUntil: persistUntil,
     );
   }
+
+  /// Checks whether the derived `dns-persist-01` TXT record is publicly
+  /// visible.
+  ///
+  /// This is a best-effort operational probe and is not part of the ACME
+  /// protocol itself. The current implementation reuses the challenge's bound
+  /// [AcmeConnection] only for logger output and shared client configuration;
+  /// it does not contact the CA. DNS visibility is checked via Google Public
+  /// DNS.
+  Future<bool> selfTest({int maxAttempts = 15}) =>
+      acmeConnectionSelfDnsPersistTest(
+        requireConnection(),
+        buildProof(),
+        maxAttempts: maxAttempts,
+      );
 }

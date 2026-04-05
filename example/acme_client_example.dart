@@ -1,10 +1,13 @@
+// Example code intentionally writes progress to stdout.
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 import 'package:acme_client/acme_client.dart';
 
 void main(List<String> args) async {
-  final persistedCredentialsPath = 'acme-account-credentials.json';
-  final connection = AcmeConnection.letsEncryptStaging();
+  const persistedCredentialsPath = 'acme-account-credentials.json';
+  const connection = AcmeConnection.staging;
   final newCredentials = AcmeAccountCredentials.generate(
     acceptTerms: true,
     contacts: ['mailto:jon@doe.com'],
@@ -16,10 +19,11 @@ void main(List<String> args) async {
     newCredentials,
     connection: connection,
   );
-  await File(
-    persistedCredentialsPath,
-  ).writeAsString(newCredentials.toJson());
+  await File(persistedCredentialsPath).writeAsString(newCredentials.toJson());
   print('Persisted account credentials to $persistedCredentialsPath');
   print('Created account: ${createdAccount.accountURL}');
-  print('Use fetch_account_example.dart to restore and fetch this account later.');
+  print(
+    'Use fetch_account_example.dart for a load-or-create credential flow '
+    'that stores the key outside the repository.',
+  );
 }

@@ -1,34 +1,40 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library identifier_resource;
 
-import 'package:acme_client/src/model/identifiers.dart';
+import '../model/identifiers.dart';
 
 class IdentifierResource {
-  IdentifierResource({
-    required this.type,
-    this.value,
-  });
+  IdentifierResource({required this.type, this.value});
 
   final IdentifierType type;
   final String? value;
 
-  factory IdentifierResource._fromMap(Map<String, dynamic> json) {
-    return IdentifierResource(
-      type: IdentifierTypeWireValue.fromWireValue(json['type'] as String),
-      value: json['value'] as String?,
-    );
-  }
+  factory IdentifierResource._fromMap(Map<String, dynamic> json) =>
+      IdentifierResource(
+        type: IdentifierTypeWireValue.fromWireValue(json['type'] as String),
+        value: json['value'] as String?,
+      );
 
   Identifier _toDomain() => switch (type) {
-    IdentifierType.dns => DomainIdentifier(value),
+    IdentifierType.dns => DomainIdentifier(
+      value ??
+          (throw ArgumentError.value(
+            value,
+            'value',
+            'ACME identifier value is missing',
+          )),
+    ),
   };
 }
 
 Map<String, dynamic> _toRequestMap(Identifier identifier) => {
   'type': identifier.type,
-  if (identifier.value != null) 'value': identifier.value,
+  'value': identifier.value,
 };
 
 /// Parses a wire-format ACME identifier resource.
@@ -44,14 +50,14 @@ IdentifierResource acmeIdentifierResourceFromMap(Map<String, dynamic> json) =>
 /// while the public identifier model stays focused on domain meaning.
 List<IdentifierResource>? acmeIdentifierResourceListFromValue(Object? value) =>
     value is List
-        ? value
-              .map(
-                (identifier) => acmeIdentifierResourceFromMap(
-                  identifier as Map<String, dynamic>,
-                ),
-              )
-              .toList()
-        : null;
+    ? value
+          .map(
+            (identifier) => acmeIdentifierResourceFromMap(
+              identifier as Map<String, dynamic>,
+            ),
+          )
+          .toList()
+    : null;
 
 /// Maps a parsed identifier resource to the public domain model.
 ///

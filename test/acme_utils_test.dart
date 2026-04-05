@@ -1,3 +1,6 @@
+// Tests keep long key material and expected digests unwrapped.
+// ignore_for_file: lines_longer_than_80_chars
+
 import 'package:acme_client/src/acme_util.dart';
 import 'package:jose/jose.dart';
 import 'package:test/test.dart';
@@ -33,7 +36,8 @@ void main() {
     digest = AcmeUtils.getDigest(key);
     expect(digest, 'UHnliA-nHylv8CpsdY9XsuZyvKLyWTq-4QpKx8V62H4');
 
-    key = JsonWebKey.fromPem('''-----BEGIN PUBLIC KEY-----
+    key = JsonWebKey.fromPem('''
+-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqE0KH1Os4O941MUZc6Pa
 m9qdtEoF7Xgy5O1z5QVSAxObd1KtTvrNSS2U50NMn1/Zi5kwnWS1Ov9q71PygmyK
 A3h1UcLWukGe8zWtGlDxPwACZIZixYP3AHiMDUSSHqQSwRtYLUFr5Wye0SEDbPd2

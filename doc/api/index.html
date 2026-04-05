@@ -108,7 +108,7 @@
 </code></pre>
 <ul>
 <li><code>AcmeConnection.baseUrl</code> = The ACME directory URL, such as Pebble's <code>https://localhost:14000/dir</code>.</li>
-<li><code>AcmeConnection.dio</code> = Optional advanced transport override. Most production callers should not pass this. It is mainly useful for tests or special environments such as local Pebble, custom TLS trust, or proxies.</li>
+<li><code>AcmeConnection(..., dio: ...)</code> = Optional advanced transport override. Most production callers should not pass this. It is mainly useful for tests or special environments such as local Pebble, custom TLS trust, or proxies.</li>
 <li><code>AcmeAccountCredentials.privateKeyPem</code> = The private key in PEM format.</li>
 <li><code>AcmeAccountCredentials.publicKeyPem</code> = The public key in PEM format.</li>
 <li><code>AcmeAccountCredentials.acceptTerms</code> = Accept terms and condition while creating / fetching an account.</li>

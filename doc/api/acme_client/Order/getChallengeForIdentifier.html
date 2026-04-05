@@ -72,7 +72,10 @@
   Identifier identifier,
   Iterable&lt;Authorization&gt; authorizations,
 ) {
-  final challenges = availableChallengesForIdentifier(identifier, authorizations);
+  final challenges = availableChallengesForIdentifier(
+    identifier,
+    authorizations,
+  );
   return Challenge.get&lt;T&gt;(challenges);
 }</code></pre>
 </section>

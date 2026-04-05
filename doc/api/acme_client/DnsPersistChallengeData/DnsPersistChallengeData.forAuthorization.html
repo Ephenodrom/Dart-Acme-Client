@@ -76,7 +76,7 @@
   DnsPersistPolicy policy = DnsPersistPolicy.wildcard,
   DateTime? persistUntil,
 }) {
-  return DnsPersistChallengeData(
+  return DnsPersistChallengeData._(
     RRecord(
       name: &#39;_validation-persist.${domainIdentifier.value}&#39;,
       rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),

@@ -54,7 +54,7 @@
 
     <section class="multi-line-signature">
       
-<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-core/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Authorization-class.html">Authorization</a></span>&gt;</span></span>&gt;</span></span>
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../acme_client/Authorization-class.html">Authorization</a></span>&gt;</span></span>&gt;</span></span>
 <span class="name ">getAuthorizations</span>(<wbr>)
 
       
@@ -73,11 +73,7 @@
 <section class="summary source-code" id="source">
   <h2><span>Implementation</span></h2>
   <pre class="language-dart"><code class="language-dart">Future&lt;List&lt;Authorization&gt;&gt; getAuthorizations() =&gt;
-    acmeAuthorizationFetchAll(
-      _requireConnection(),
-      _requireAccount(),
-      this,
-    );</code></pre>
+    acmeAuthorizationFetchAll(_requireConnection(), _requireAccount(), this);</code></pre>
 </section>
 
 

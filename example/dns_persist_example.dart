@@ -1,22 +1,22 @@
+// Example code intentionally prints the manual steps for the operator.
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:acme_client/acme_client.dart';
 
 void main(List<String> args) async {
-  final privateKeyPem =
+  const privateKeyPem =
       '''-----BEGIN RSA PRIVATE KEY----- ... -----END RSA PRIVATE KEY-----''';
 
-  final publicKeyPem =
+  const publicKeyPem =
       '''-----BEGIN PUBLIC KEY----- ... -----END PUBLIC KEY-----''';
 
-  final csr =
-      '''-----BEGIN CERTIFICATE REQUEST----- ... -----END CERTIFICATE REQUEST-----''';
+  const domain = 'example.com';
 
-  final domain = 'example.com';
-
-  final connection = AcmeConnection.letsEncryptStaging();
-  final credentials = AcmeAccountCredentials(
+  const connection = AcmeConnection.staging;
+  const credentials = AcmeAccountCredentials(
     privateKeyPem: privateKeyPem,
     publicKeyPem: publicKeyPem,
     acceptTerms: true,
@@ -24,27 +24,33 @@ void main(List<String> args) async {
   );
   final account = await Account.fetch(credentials, connection: connection);
 
-  final order = await account.createOrder(
-    Order(identifiers: [DomainIdentifier(domain)]),
+  const domainIdentifier = DomainIdentifier(domain);
+  final certificateCredentials = CertificateCredentials.generate(
+    identifiers: [domainIdentifier],
+  );
+  final order = await account.createOrderForDnsPersist(
+    identifiers: [domainIdentifier],
   );
 
-  final authorizations = await order.getAuthorizations();
-  final domainIdentifier = DomainIdentifier(domain);
-  final persistChallenge = order.getChallengeForIdentifier<DnsPersistChallenge>(
-    domainIdentifier,
-    authorizations,
-  );
-  final persistData = persistChallenge.buildDnsPersistChallengeData(
-    domainIdentifier: domainIdentifier,
-    accountUri: account.accountURL!,
-  );
+  final authorization = await order.getAuthorization(domainIdentifier);
+  final persistChallenge = authorization.getChallenge();
+  final persistProof = persistChallenge.buildProof();
 
   print('Publish the following TXT record:');
-  print('${persistData.txtRecordName} IN TXT "${persistData.txtRecordValue}"');
+  print(
+    '${persistProof.txtRecordName} IN TXT "${persistProof.txtRecordValue}"',
+  );
   print('Press Enter once the DNS record is visible to the CA');
   stdin.readLineSync(encoding: utf8);
 
-  final authValid = await account.validate(persistData.challenge);
+  final selfTestPassed = await persistChallenge.selfTest();
+  if (!selfTestPassed) {
+    print('Self-test failed, persistent DNS TXT record is not visible.');
+    exit(1);
+  }
+
+  /// Request the CA to validate the DNS record.
+  final authValid = await persistChallenge.validate();
   if (!authValid) {
     print('Authorization failed');
     exit(1);
@@ -56,7 +62,7 @@ void main(List<String> args) async {
     exit(1);
   }
 
-  final finalizedOrder = await order.finalize(csr);
-  final certificates = await finalizedOrder.getCertificates();
+  await order.finalize(certificateCredentials);
+  final certificates = await order.getCertificates();
   print(jsonEncode(certificates));
 }

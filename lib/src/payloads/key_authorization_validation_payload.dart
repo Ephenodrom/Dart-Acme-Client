@@ -1,13 +1,14 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/payloads/validation_payload.dart';
+import '../model/key_authorization.dart';
+import 'validation_payload.dart';
 
 class KeyAuthorizationValidationPayload extends ValidationPayload {
   const KeyAuthorizationValidationPayload(this.keyAuthorization);
 
-  final String keyAuthorization;
+  final KeyAuthorization keyAuthorization;
 
   @override
   String get stringContent =>
-      json.encode({'keyAuthorization': keyAuthorization});
+      json.encode({'keyAuthorization': keyAuthorization.value});
 }

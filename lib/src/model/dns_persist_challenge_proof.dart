@@ -1,35 +1,42 @@
-import 'package:acme_client/src/model/dcv_data.dart';
-import 'package:acme_client/src/model/dcv_type.dart';
-import 'package:acme_client/src/model/dns_persist_challenge.dart';
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/model/dns_persist_policy.dart';
 import 'package:basic_utils/basic_utils.dart';
-class DnsPersistChallengeData extends ChallengeData {
-  final RRecord _rRecord;
+import 'package:meta/meta.dart';
+
+import 'dns_persist_challenge.dart';
+import 'dns_persist_policy.dart';
+import 'identifiers.dart';
+
+/// The persistent DNS TXT proof a caller must publish to satisfy a
+/// `dns-persist-01` challenge.
+///
+/// Call txtRecordName and txtRecordValue to get the record name and value to
+/// publish to your DNS server.
+class DnsPersistChallengeProof {
   final DnsPersistChallenge challenge;
   final String issuerDomainName;
   final String accountUri;
   final DnsPersistPolicy policy;
   final DateTime? persistUntil;
 
-  DnsPersistChallengeData(
+  final RRecord _rRecord;
+
+  DnsPersistChallengeProof._(
     this._rRecord,
     this.challenge, {
     required this.issuerDomainName,
     required this.accountUri,
-    this.policy = DnsPersistPolicy.wildcard,
+    this.policy = DnsPersistPolicy.fqdn,
     this.persistUntil,
-  }) : super(DcvType.DNS_PERSIST);
+  });
 
-  factory DnsPersistChallengeData.forAuthorization({
+  @internal
+  factory DnsPersistChallengeProof.forAuthorization({
     required DomainIdentifier domainIdentifier,
     required DnsPersistChallenge challenge,
     required String issuerDomainName,
     required String accountUri,
-    DnsPersistPolicy policy = DnsPersistPolicy.wildcard,
+    DnsPersistPolicy policy = DnsPersistPolicy.fqdn,
     DateTime? persistUntil,
-  }) {
-    return DnsPersistChallengeData(
+  }) => DnsPersistChallengeProof._(
       RRecord(
         name: '_validation-persist.${domainIdentifier.value}',
         rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
@@ -47,23 +54,26 @@ class DnsPersistChallengeData extends ChallengeData {
       policy: policy,
       persistUntil: persistUntil,
     );
-  }
 
   String get txtRecordName => _rRecord.name;
 
   String get txtRecordValue => _rRecord.data;
 
+  /// Formats the proof as a BIND-compatible TXT record line.
   String toBindString() => DnsUtils.toBind(_rRecord);
 
   static String _buildRecordValue({
     required String issuerDomainName,
     required String accountUri,
-    DnsPersistPolicy policy = DnsPersistPolicy.wildcard,
+    DnsPersistPolicy policy = DnsPersistPolicy.fqdn,
     DateTime? persistUntil,
   }) {
     final parts = <String>[issuerDomainName, 'accounturi=$accountUri'];
 
-    parts.add('policy=${policy.wireValue}');
+    final wirePolicy = policy.wireValue;
+    if (wirePolicy != null) {
+      parts.add('policy=$wirePolicy');
+    }
     if (persistUntil != null) {
       parts.add(
         'persistUntil=${persistUntil.toUtc().millisecondsSinceEpoch ~/ 1000}',

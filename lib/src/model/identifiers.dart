@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 enum IdentifierType { dns }
 
 extension IdentifierTypeWireValue on IdentifierType {
@@ -18,7 +20,8 @@ extension IdentifierTypeWireValue on IdentifierType {
 abstract class Identifier {
   const Identifier(this.value);
 
-  final String? value;
+  @nonVirtual
+  final String value;
 
   IdentifierType get identifierType;
 

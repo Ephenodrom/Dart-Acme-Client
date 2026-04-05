@@ -210,17 +210,6 @@ class AcmeClientException implements Exception {
   final Object? rawBody;
   final Object? cause;
 
-  static T wrapDioException<T extends AcmeClientException>(
-    DioException exception,
-    String fallbackMessage,
-    T Function(DioException exception, String fallbackMessage) builder, {
-    void Function(T wrapped)? onWrapped,
-  }) {
-    final wrapped = builder(exception, fallbackMessage);
-    onWrapped?.call(wrapped);
-    return wrapped;
-  }
-
   @override
   String toString() => 'AcmeClientException: $message';
 }

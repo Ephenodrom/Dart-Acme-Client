@@ -54,9 +54,9 @@
 
     <section class="multi-line-signature">
       const
-      <span class="name ">AcmeConnection</span>(<wbr>{<ol class="parameter-list"> <li><span class="parameter" id="-param-baseUrl"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">baseUrl</span> = <span class="default-value">letsEncryptDirectoryUrl</span>, </span></li>
-<li><span class="parameter" id="-param-dio"><span class="type-annotation"><a href="https://pub.dev/documentation/dio/5.9.2/dio/Dio-class.html">Dio</a>?</span> <span class="parameter-name">dio</span>, </span></li>
-<li><span class="parameter" id="-param-logger"><span class="type-annotation"><a href="../../acme_client/AcmeLogFn.html">AcmeLogFn</a>?</span> <span class="parameter-name">logger</span>, </span></li>
+      <span class="name ">AcmeConnection</span>(<wbr>{<ol class="parameter-list"> <li><span class="parameter" id="param-baseUrl"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">baseUrl</span> = <span class="default-value">letsEncryptDirectoryUrl</span>, </span></li>
+<li><span class="parameter" id="param-dio"><span class="type-annotation"><a href="https://pub.dev/documentation/dio/5.9.2/dio/Dio-class.html">Dio</a>?</span> <span class="parameter-name">dio</span>, </span></li>
+<li><span class="parameter" id="param-logger"><span class="type-annotation"><a href="../../acme_client/AcmeLogFn.html">AcmeLogFn</a>?</span> <span class="parameter-name">logger</span>, </span></li>
 </ol>})
     </section>
     
@@ -67,9 +67,10 @@
   <h2><span>Implementation</span></h2>
   <pre class="language-dart"><code class="language-dart">const AcmeConnection({
   this.baseUrl = letsEncryptDirectoryUrl,
-  this.dio,
+  Dio? dio,
   this.logger,
-}) : _session = null;</code></pre>
+}) : _dio = dio,
+     _session = null;</code></pre>
 </section>
 
 

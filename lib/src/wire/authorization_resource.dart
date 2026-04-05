@@ -1,14 +1,18 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library authorization_resource;
 
-import 'package:acme_client/src/model/authorization.dart';
-import 'package:acme_client/src/model/challenge.dart';
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/wire/challenge_resource.dart';
-import 'package:acme_client/src/wire/identifier_resource.dart';
 import 'package:dio/dio.dart';
+
+import '../model/authorization.dart';
+import '../model/challenge.dart';
+import '../model/identifiers.dart';
+import 'challenge_resource.dart';
+import 'identifier_resource.dart';
 
 class AuthorizationResource {
   AuthorizationResource({
@@ -23,20 +27,19 @@ class AuthorizationResource {
   final Identifier? identifier;
   final List<ChallengeResource>? challenges;
 
-  factory AuthorizationResource._fromMap(Map<String, dynamic> json) {
-    return AuthorizationResource(
-      status: json['status'] as String?,
-      expires: _parseResourceDateTime(json['expires']),
-      identifier: json['identifier'] is Map<String, dynamic>
-          ? acmeIdentifierFromResource(
-              acmeIdentifierResourceFromMap(
-                json['identifier'] as Map<String, dynamic>,
-              ),
-            )
-          : null,
-      challenges: acmeChallengeResourceListFromValue(json['challenges']),
-    );
-  }
+  factory AuthorizationResource._fromMap(Map<String, dynamic> json) =>
+      AuthorizationResource(
+        status: json['status'] as String?,
+        expires: _parseResourceDateTime(json['expires']),
+        identifier: json['identifier'] is Map<String, dynamic>
+            ? acmeIdentifierFromResource(
+                acmeIdentifierResourceFromMap(
+                  json['identifier'] as Map<String, dynamic>,
+                ),
+              )
+            : null,
+        challenges: acmeChallengeResourceListFromValue(json['challenges']),
+      );
 
   Authorization _toDomain({String? authorizationUrl}) {
     final authorization = Authorization(
@@ -91,9 +94,9 @@ Authorization acmeAuthorizationFromResponseMap(
 /// Why this exists: the response layer still needs a direct response adapter,
 /// but that adapter should live in the internal wire layer.
 Authorization acmeAuthorizationFromResponse(
-  Response response, {
+  Response<Object?> response, {
   required String authorizationUrl,
 }) => acmeAuthorizationFromResponseMap(
-  response.data as Map<String, dynamic>,
+  response.data! as Map<String, dynamic>,
   authorizationUrl: authorizationUrl,
 );

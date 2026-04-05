@@ -71,7 +71,7 @@
   required HttpChallenge challenge,
 }) {
   final token = keyAuthorization.split(&#39;.&#39;).first;
-  return HttpChallengeData(
+  return HttpChallengeData._(
     &#39;${domainIdentifier.value}&#47;.well-known&#47;acme-challenge&#47;$token&#39;,
     keyAuthorization,
     challenge,

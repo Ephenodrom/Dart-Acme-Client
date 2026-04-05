@@ -11,6 +11,10 @@ extension ChallengeTypeWireValue on ChallengeType {
     'dns-01' => ChallengeType.dns,
     'http-01' => ChallengeType.http,
     'dns-persist-01' => ChallengeType.dnsPersist,
-    _ => throw ArgumentError.value(value, 'value', 'Unsupported challenge type'),
+    _ => throw ArgumentError.value(
+      value,
+      'value',
+      'Unsupported challenge type',
+    ),
   };
 }

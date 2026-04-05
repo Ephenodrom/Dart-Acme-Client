@@ -1,10 +1,16 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library account_resource;
 
-import 'package:acme_client/src/model/account.dart';
 import 'package:dio/dio.dart';
+
+import '../model/account.dart';
+import '../model/account_status.dart';
+import '../model/order_url.dart';
 
 class AccountResource {
   AccountResource({
@@ -23,27 +29,23 @@ class AccountResource {
   final bool? termsOfServiceAgreed;
   final String? orders;
 
-  factory AccountResource._fromMap(Map<String, dynamic> json) {
-    return AccountResource(
-      contact: (json['contact'] as List?)?.cast<String>(),
-      createdAt: _parseAccountDateTime(json['createdAt']),
-      initialIp: json['initialIp'] as String?,
-      status: json['status'] as String?,
-      termsOfServiceAgreed: json['termsOfServiceAgreed'] as bool?,
-      orders: json['orders'] as String?,
-    );
-  }
+  factory AccountResource._fromMap(Map<String, dynamic> json) =>
+      AccountResource(
+        contact: (json['contact'] as List?)?.cast<String>(),
+        createdAt: _parseAccountDateTime(json['createdAt']),
+        initialIp: json['initialIp'] as String?,
+        status: json['status'] as String?,
+        termsOfServiceAgreed: json['termsOfServiceAgreed'] as bool?,
+        orders: json['orders'] as String?,
+      );
 
-  Account _toDomain() {
-    return Account(
-      contact: contact,
-      createdAt: createdAt,
-      initialIp: initialIp,
-      status: status,
-      termsOfServiceAgreed: termsOfServiceAgreed,
-      orders: orders,
-    );
-  }
+  Account _toDomain() => Account(
+    contact: contact ?? const [],
+    createdAt: createdAt,
+    status: AccountStatusWireValue.fromWireValue(status),
+    termsOfServiceAgreed: termsOfServiceAgreed ?? false,
+    ordersUrl: orders == null ? null : OrderUrl.parse(orders!),
+  );
 }
 
 DateTime? _parseAccountDateTime(Object? value) => switch (value) {
@@ -62,7 +64,8 @@ AccountResource acmeAccountResourceFromMap(Map<String, dynamic> json) =>
 ///
 /// Why this exists: the public `Account` type should only expose fluent API
 /// behavior while wire parsing remains internal.
-Account acmeAccountFromResource(AccountResource resource) => resource._toDomain();
+Account acmeAccountFromResource(AccountResource resource) =>
+    resource._toDomain();
 
 /// Maps an ACME account response body to the public domain model.
 ///
@@ -75,8 +78,18 @@ Account acmeAccountFromResponseMap(Map<String, dynamic> json) =>
 ///
 /// Why this exists: the response layer still needs a direct response adapter,
 /// but that adapter should live in the internal wire layer.
-Account acmeAccountFromResponse(Response response) {
-  final account = acmeAccountFromResponseMap(response.data as Map<String, dynamic>);
-  account.accountURL = response.headers.map['Location']?.first ?? '';
-  return account;
+Account acmeAccountFromResponse(Response<Object?> response) {
+  final resource = acmeAccountResourceFromMap(
+    response.data! as Map<String, dynamic>,
+  );
+  return Account(
+    accountURL: response.headers.map['Location']?.first ?? '',
+    contact: resource.contact ?? const [],
+    createdAt: resource.createdAt,
+    status: AccountStatusWireValue.fromWireValue(resource.status),
+    termsOfServiceAgreed: resource.termsOfServiceAgreed ?? false,
+    ordersUrl: resource.orders == null
+        ? null
+        : OrderUrl.parse(resource.orders!),
+  );
 }

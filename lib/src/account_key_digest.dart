@@ -1,6 +1,7 @@
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/acme_util.dart';
 import 'package:jose/jose.dart';
+
+import 'acme_client_exception.dart';
+import 'acme_util.dart';
 
 class AccountKeyDigest {
   const AccountKeyDigest(this.value);
@@ -39,3 +40,6 @@ class AccountKeyDigest {
 
 String acmeAccountKeyDigestFromPublicKeyPem(String publicKeyPem) =>
     AccountKeyDigest.fromPublicKeyPem(publicKeyPem).value;
+// Internal exception mapping intentionally normalizes low-level key parsing
+// errors.
+// ignore_for_file: avoid_catching_errors

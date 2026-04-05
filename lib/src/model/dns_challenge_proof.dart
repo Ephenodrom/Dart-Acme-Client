@@ -1,28 +1,35 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:acme_client/src/model/dcv_data.dart';
-import 'package:acme_client/src/model/dcv_type.dart';
-import 'package:acme_client/src/model/dns_challenge.dart';
-import 'package:acme_client/src/model/identifiers.dart';
 import 'package:basic_utils/basic_utils.dart';
-class DnsChallengeData extends ChallengeData {
+import 'package:meta/meta.dart';
+
+import 'dns_challenge.dart';
+import 'identifiers.dart';
+import 'key_authorization.dart';
+
+/// The DNS TXT proof a caller must publish to satisfy a `dns-01` challenge.
+///
+/// This is not the CA challenge object. It is the derived proof artifact built
+/// from a [DnsChallenge] plus the local identifier and account key material.
+class DnsChallengeProof {
   final RRecord _rRecord;
   final DnsChallenge challenge;
 
-  DnsChallengeData._(this._rRecord, this.challenge) : super(DcvType.DNS);
+  DnsChallengeProof._(this._rRecord, this.challenge);
 
-  factory DnsChallengeData.forAuthorization({
+  @internal
+  factory DnsChallengeProof.forAuthorization({
     required DomainIdentifier domainIdentifier,
-    required String keyAuthorization,
+    required KeyAuthorization keyAuthorization,
     required DnsChallenge challenge,
   }) {
     final hash = CryptoUtils.getHashPlain(
-      Uint8List.fromList(keyAuthorization.codeUnits),
+      Uint8List.fromList(keyAuthorization.value.codeUnits),
     );
     final value = base64UrlEncode(hash).replaceAll('=', '');
 
-    return DnsChallengeData._(
+    return DnsChallengeProof._(
       RRecord(
         name: '_acme-challenge.${domainIdentifier.value}',
         rType: DnsUtils.rRecordTypeToInt(RRecordType.TXT),
@@ -37,5 +44,6 @@ class DnsChallengeData extends ChallengeData {
 
   String get txtRecordValue => _rRecord.data;
 
+  /// Formats the proof as a BIND-compatible TXT record line.
   String toBindString() => DnsUtils.toBind(_rRecord);
 }

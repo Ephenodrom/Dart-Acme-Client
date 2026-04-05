@@ -1,18 +1,24 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/acme_connection.dart';
-import 'package:acme_client/src/acme_logger.dart';
-import 'package:acme_client/src/model/account.dart';
-import 'package:acme_client/src/model/challenge.dart';
-import 'package:acme_client/src/model/order.dart';
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/wire/authorization_resource.dart';
 import 'package:dio/dio.dart';
+
+import '../acme_client_exception.dart';
+import '../acme_connection.dart';
+import '../acme_exception_factory.dart';
+import '../acme_logger.dart';
+import '../wire/authorization_resource.dart';
+import '../wire/identifier_resource.dart';
+import 'account.dart';
+import 'challenge.dart';
+import 'challenge_type.dart';
+import 'identifiers.dart';
+import 'order.dart';
+
 class Authorization implements AuthorizationLike {
   String? status;
   DateTime? expires;
   Identifier? identifier;
+  ChallengeType? challengeType;
   @override
   List<Challenge>? challenges;
 
@@ -21,7 +27,68 @@ class Authorization implements AuthorizationLike {
     this.expires,
     this.identifier,
     this.status,
+    this.challengeType,
   });
+
+  bool hasChallenge({ChallengeType? challengeType}) {
+    final selectedChallengeType = challengeType ?? this.challengeType;
+    if (selectedChallengeType == null) {
+      return false;
+    }
+    return challenges?.any(
+          (challenge) => challenge.challengeType == selectedChallengeType,
+        ) ??
+        false;
+  }
+
+  Challenge getChallenge({ChallengeType? challengeType}) {
+    final selectedChallengeType =
+        challengeType ??
+        this.challengeType ??
+        (throw const AcmeConfigurationException(
+          'challengeType must be configured on the order or passed explicitly',
+        ));
+    final availableChallenges = challenges;
+    if (availableChallenges == null || availableChallenges.isEmpty) {
+      throw AcmeAuthorizationException(
+        'No ACME challenges are available for this authorization',
+        detail: selectedChallengeType.wireValue,
+        rawBody: {
+          'status': status,
+          'identifier': identifier == null
+              ? null
+              : acmeIdentifierToRequestMap(identifier!),
+        },
+      );
+    }
+
+    final challenge = availableChallenges
+        .where(
+          (availableChallenge) =>
+              availableChallenge.challengeType == selectedChallengeType,
+        )
+        .cast<Challenge?>()
+        .firstWhere((candidate) => candidate != null, orElse: () => null);
+
+    if (challenge == null) {
+      throw AcmeAuthorizationException(
+        'The ACME server does not offer the requested challenge type for this authorization',
+        detail:
+            '${identifier?.value ?? '<unknown>'} (${selectedChallengeType.wireValue})',
+        rawBody: {
+          'status': status,
+          'identifier': identifier == null
+              ? null
+              : acmeIdentifierToRequestMap(identifier!),
+          'challenges': availableChallenges
+              .map((availableChallenge) => availableChallenge.type)
+              .toList(),
+        },
+      );
+    }
+
+    return challenge;
+  }
 
   static Future<List<Authorization>> _fetchAll(
     AcmeConnection connection,
@@ -39,24 +106,22 @@ class Authorization implements AuthorizationLike {
       final body = json.encode(jws.toJson());
       const headers = {'Content-Type': 'application/jose+json'};
       try {
-        final response = await acmeConnectionResolvedDio(connection).post(
-          authUrl,
-          data: body,
-          options: Options(headers: headers),
-        );
+        final response = await acmeConnectionResolvedDio(connection)
+            .post<Object?>(
+              authUrl,
+              data: body,
+              options: Options(headers: headers),
+            );
         acmeConnectionJwsManager(connection).updateNonce(response);
         authorizations.add(
-          acmeAuthorizationFromResponse(
-            response,
-            authorizationUrl: authUrl,
-          ),
+          acmeAuthorizationFromResponse(response, authorizationUrl: authUrl),
         );
       } on DioException catch (e, s) {
         acmeConnectionJwsManager(connection).captureErrorNonce(e);
-        throw AcmeClientException.wrapDioException(
+        throw acmeWrapDioException(
           e,
           'Failed to fetch ACME authorization',
-          AcmeAuthorizationException.fromDioException,
+          acmeAuthorizationExceptionFromDioException,
           onWrapped: (wrapped) => connection.logger?.call(
             AcmeLogLevel.error,
             wrapped.message,
@@ -85,3 +150,5 @@ Future<List<Authorization>> acmeAuthorizationFetchAll(
   Account account,
   Order order,
 ) => Authorization._fetchAll(connection, account, order);
+// Public API docs intentionally keep some long protocol explanations unwrapped.
+// ignore_for_file: lines_longer_than_80_chars

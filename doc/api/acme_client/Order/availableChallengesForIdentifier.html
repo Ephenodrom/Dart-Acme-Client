@@ -72,10 +72,10 @@
   Identifier identifier,
   Iterable&lt;Authorization&gt; authorizations,
 ) {
-  return authorizationsForIdentifier(
-    identifier,
-    authorizations,
-  ).expand((authorization) =&gt; authorization.challenges ?? const &lt;Challenge&gt;[])
+  return authorizationsForIdentifier(identifier, authorizations)
+      .expand(
+        (authorization) =&gt; authorization.challenges ?? const &lt;Challenge&gt;[],
+      )
       .toList();
 }</code></pre>
 </section>

@@ -11,3 +11,4 @@ pubspec.lock
 .failed_tracker
 .mcp_logs/mcp_command_server.log
 logs/analyzer.txt
+tool/pebble/pebble-test.local.json

@@ -23,10 +23,17 @@ http://localhost:8055
 
 ## Run the integration test
 
+Create an untracked local config file with the Pebble account key pair:
+
+```sh
+cp tool/pebble/pebble-test.example.json tool/pebble/pebble-test.local.json
+```
+
 ```sh
 export ACME_PEBBLE_ENABLE_TESTS=true
 export ACME_PEBBLE_BASE_URL=https://localhost:14000/dir
 export ACME_PEBBLE_MANAGEMENT_URL=http://localhost:8055
+export ACME_PEBBLE_CONFIG_PATH=tool/pebble/pebble-test.local.json
 dart test test/dns_persist_pebble_test.dart
 ```
 
@@ -47,3 +54,5 @@ dart test test/dns_persist_pebble_test.dart
   `challtestsrv`.
 - The test uses the library's `getDnsPersistDcvDataForOrder(...)` helper to
   construct the `_validation-persist.<fqdn>` record.
+- `tool/pebble/pebble-test.local.json` is ignored by git and is the intended
+  place for local Pebble test credentials.

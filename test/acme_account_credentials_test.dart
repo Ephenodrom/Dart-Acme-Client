@@ -1,3 +1,6 @@
+// Tests intentionally keep a few signatures and literals compact.
+// ignore_for_file: unnecessary_async
+
 import 'package:acme_client/acme_client.dart';
 import 'package:acme_client/src/acme_connection.dart';
 import 'package:acme_client/src/model/account.dart';
@@ -17,11 +20,11 @@ void main() {
   });
 
   test('AcmeAccountCredentials round-trip through JSON', () {
-    final credentials = AcmeAccountCredentials(
+    const credentials = AcmeAccountCredentials(
       privateKeyPem: 'private-pem',
       publicKeyPem: 'public-pem',
       acceptTerms: true,
-      contacts: const ['mailto:admin@example.com'],
+      contacts: ['mailto:admin@example.com'],
     );
 
     final restored = AcmeAccountCredentials.fromMap(credentials.toMap());
@@ -33,55 +36,54 @@ void main() {
   });
 
   test('AcmeAccountCredentials round-trip through JSON string', () {
-    final credentials = AcmeAccountCredentials(
-      privateKeyPem: 'private-pem',
-      publicKeyPem: 'public-pem',
-      acceptTerms: true,
-      contacts: const ['mailto:admin@example.com'],
-    );
-
-    final restored = AcmeAccountCredentials.fromJson(
-      credentials.toJson(),
-    );
-
-    expect(restored.privateKeyPem, credentials.privateKeyPem);
-    expect(restored.publicKeyPem, credentials.publicKeyPem);
-    expect(restored.acceptTerms, credentials.acceptTerms);
-    expect(restored.contacts, credentials.contacts);
-  });
-
-  test('AcmeConnection can be recreated from persisted account credentials', () async {
-    final connection = const AcmeConnection(baseUrl: 'https://example.com/acme');
-    final credentials = AcmeAccountCredentials(
+    const credentials = AcmeAccountCredentials(
       privateKeyPem: 'private-pem',
       publicKeyPem: 'public-pem',
       acceptTerms: true,
       contacts: ['mailto:admin@example.com'],
     );
 
-    final restored = acmeConnectionToAccountCredentials(
-      acmeConnectionBindCredentials(connection, credentials),
-    );
+    final restored = AcmeAccountCredentials.fromJson(credentials.toJson());
 
     expect(restored.privateKeyPem, credentials.privateKeyPem);
     expect(restored.publicKeyPem, credentials.publicKeyPem);
     expect(restored.acceptTerms, credentials.acceptTerms);
     expect(restored.contacts, credentials.contacts);
   });
+
+  test(
+    'AcmeConnection can be recreated from persisted account credentials',
+    () async {
+      const connection = AcmeConnection(baseUrl: 'https://example.com/acme');
+      const credentials = AcmeAccountCredentials(
+        privateKeyPem: 'private-pem',
+        publicKeyPem: 'public-pem',
+        acceptTerms: true,
+        contacts: ['mailto:admin@example.com'],
+      );
+
+      final restored = acmeConnectionToAccountCredentials(
+        acmeConnectionBindCredentials(connection, credentials),
+      );
+
+      expect(restored.privateKeyPem, credentials.privateKeyPem);
+      expect(restored.publicKeyPem, credentials.publicKeyPem);
+      expect(restored.acceptTerms, credentials.acceptTerms);
+      expect(restored.contacts, credentials.contacts);
+    },
+  );
 
   test('attached account can recreate account credentials', () async {
-    final credentials = AcmeAccountCredentials(
+    const credentials = AcmeAccountCredentials(
       privateKeyPem: 'private-pem',
       publicKeyPem: 'public-pem',
       acceptTerms: true,
       contacts: ['mailto:admin@example.com'],
     );
-    final connection = const AcmeConnection(baseUrl: 'https://example.com/acme');
+    const connection = AcmeConnection(baseUrl: 'https://example.com/acme');
     final client = acmeConnectionBindCredentials(connection, credentials);
     final account = acmeAccountAttachConnection(
-      Account(
-        accountURL: 'https://example.com/acme/account/1',
-      ),
+      Account(accountURL: 'https://example.com/acme/account/1'),
       client,
     );
 
@@ -92,26 +94,27 @@ void main() {
     expect(restored.contacts, credentials.contacts);
   });
 
-  test('account wrappers delegate validation helpers to the attached connection', () async {
-    final credentials = AcmeAccountCredentials(
-      privateKeyPem: 'private-pem',
-      publicKeyPem: 'public-pem',
-      acceptTerms: true,
-      contacts: ['mailto:admin@example.com'],
-    );
-    final connection = const AcmeConnection(baseUrl: 'https://example.com/acme');
-    final client = acmeConnectionBindCredentials(connection, credentials);
-    acmeConnectionTestSetAccount(
-      client,
-      Account(accountURL: 'https://example.com/acme/account/1'),
-    );
-    final account = acmeAccountAttachConnection(
-      Account(
-        accountURL: 'https://example.com/acme/account/1',
-      ),
-      client,
-    );
+  test(
+    'account wrappers delegate validation helpers to the attached connection',
+    () async {
+      const credentials = AcmeAccountCredentials(
+        privateKeyPem: 'private-pem',
+        publicKeyPem: 'public-pem',
+        acceptTerms: true,
+        contacts: ['mailto:admin@example.com'],
+      );
+      const connection = AcmeConnection(baseUrl: 'https://example.com/acme');
+      final client = acmeConnectionBindCredentials(connection, credentials);
+      acmeConnectionTestSetAccount(
+        client,
+        Account(accountURL: 'https://example.com/acme/account/1'),
+      );
+      final account = acmeAccountAttachConnection(
+        Account(accountURL: 'https://example.com/acme/account/1'),
+        client,
+      );
 
-    expect(account.toAccountCredentials().contacts, credentials.contacts);
-  });
+      expect(account.toAccountCredentials().contacts, credentials.contacts);
+    },
+  );
 }

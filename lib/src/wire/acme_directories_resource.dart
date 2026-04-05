@@ -1,11 +1,16 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library acme_directories_resource;
 
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/model/acme_directories.dart';
 import 'package:dio/dio.dart';
+
+import '../acme_client_exception.dart';
+import '../acme_exception_factory.dart';
+import '../model/acme_directories.dart';
 
 class AcmeDirectoriesResource {
   AcmeDirectoriesResource({
@@ -22,25 +27,22 @@ class AcmeDirectoriesResource {
   final String? newOrder;
   final String? revokeCert;
 
-  factory AcmeDirectoriesResource._fromMap(Map<String, dynamic> json) {
-    return AcmeDirectoriesResource(
-      keyChange: json['keyChange'] as String?,
-      newAccount: json['newAccount'] as String?,
-      newNonce: json['newNonce'] as String?,
-      newOrder: json['newOrder'] as String?,
-      revokeCert: json['revokeCert'] as String?,
-    );
-  }
+  factory AcmeDirectoriesResource._fromMap(Map<String, dynamic> json) =>
+      AcmeDirectoriesResource(
+        keyChange: json['keyChange'] as String?,
+        newAccount: json['newAccount'] as String?,
+        newNonce: json['newNonce'] as String?,
+        newOrder: json['newOrder'] as String?,
+        revokeCert: json['revokeCert'] as String?,
+      );
 
-  AcmeDirectories _toDomain() {
-    return AcmeDirectories(
-      keyChange: keyChange,
-      newAccount: newAccount,
-      newNonce: newNonce,
-      newOrder: newOrder,
-      revokeCert: revokeCert,
-    );
-  }
+  AcmeDirectories _toDomain() => AcmeDirectories(
+    keyChange: keyChange,
+    newAccount: newAccount,
+    newNonce: newNonce,
+    newOrder: newOrder,
+    revokeCert: revokeCert,
+  );
 }
 
 /// Parses a wire-format ACME directory resource.
@@ -80,13 +82,17 @@ Future<AcmeDirectories> acmeDirectoriesFetch(
   onWrapped,
 }) async {
   try {
-    final response = await dio.get(_directoryUrl(baseUrl));
-    return acmeDirectoriesFromResponseMap(response.data as Map<String, dynamic>);
+    final response = await dio.get<Map<String, Object?>>(
+      _directoryUrl(baseUrl),
+    );
+    return acmeDirectoriesFromResponseMap(
+      response.data! as Map<String, dynamic>,
+    );
   } on DioException catch (e, s) {
-    throw AcmeClientException.wrapDioException<AcmeDirectoryException>(
+    throw acmeWrapDioException<AcmeDirectoryException>(
       e,
       'Failed to fetch ACME directory',
-      AcmeDirectoryException.fromDioException,
+      acmeDirectoryExceptionFromDioException,
       onWrapped: (wrapped) => onWrapped?.call(wrapped, e, s),
     );
   }

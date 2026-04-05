@@ -1,13 +1,16 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library challenge_resource;
 
-import 'package:acme_client/src/model/challenge.dart';
-import 'package:acme_client/src/model/challenge_type.dart';
-import 'package:acme_client/src/model/dns_challenge.dart';
-import 'package:acme_client/src/model/dns_persist_challenge.dart';
-import 'package:acme_client/src/model/http_challenge.dart';
+import '../model/challenge.dart';
+import '../model/challenge_type.dart';
+import '../model/dns_challenge.dart';
+import '../model/dns_persist_challenge.dart';
+import '../model/http_challenge.dart';
 
 class ChallengeResource {
   ChallengeResource({
@@ -15,37 +18,29 @@ class ChallengeResource {
     this.url,
     this.status,
     this.token,
-    this.issuerDomainNames,
+    this.issuerDomainNames = const [],
   });
 
   final ChallengeType type;
   final String? url;
   final String? status;
   final String? token;
-  final List<String>? issuerDomainNames;
+  final List<String> issuerDomainNames;
 
-  factory ChallengeResource._fromMap(Map<String, dynamic> json) {
-    return ChallengeResource(
-      type: ChallengeTypeWireValue.fromWireValue(json['type'] as String),
-      url: json['url'] as String?,
-      status: json['status'] as String?,
-      token: json['token'] as String?,
-      issuerDomainNames: (json['issuer-domain-names'] as List<dynamic>?)
-          ?.cast<String>(),
-    );
-  }
+  factory ChallengeResource._fromMap(Map<String, dynamic> json) =>
+      ChallengeResource(
+        type: ChallengeTypeWireValue.fromWireValue(json['type'] as String),
+        url: json['url'] as String?,
+        status: json['status'] as String?,
+        token: json['token'] as String?,
+        issuerDomainNames:
+            (json['issuer-domain-names'] as List<Object?>?)?.cast<String>() ??
+            const [],
+      );
 
   Challenge _toDomain() => switch (type) {
-    ChallengeType.dns => DnsChallenge(
-      url: url,
-      status: status,
-      token: token,
-    ),
-    ChallengeType.http => HttpChallenge(
-      url: url,
-      status: status,
-      token: token,
-    ),
+    ChallengeType.dns => DnsChallenge(url: url, status: status, token: token),
+    ChallengeType.http => HttpChallenge(url: url, status: status, token: token),
     ChallengeType.dnsPersist => DnsPersistChallenge(
       url: url,
       status: status,
@@ -68,13 +63,13 @@ ChallengeResource acmeChallengeResourceFromMap(Map<String, dynamic> json) =>
 /// keeping public challenge models free of wire parsing helpers.
 List<ChallengeResource>? acmeChallengeResourceListFromValue(Object? value) =>
     value is List
-        ? value
-              .map(
-                (challenge) =>
-                    acmeChallengeResourceFromMap(challenge as Map<String, dynamic>),
-              )
-              .toList()
-        : null;
+    ? value
+          .map(
+            (challenge) =>
+                acmeChallengeResourceFromMap(challenge as Map<String, dynamic>),
+          )
+          .toList()
+    : null;
 
 /// Maps a parsed challenge resource to the public domain model.
 ///

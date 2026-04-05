@@ -64,8 +64,9 @@
     
 <section class="summary source-code" id="source">
   <h2><span>Implementation</span></h2>
-  <pre class="language-dart"><code class="language-dart">const AcmeConnection.letsEncryptStaging({this.dio, this.logger})
+  <pre class="language-dart"><code class="language-dart">const AcmeConnection.letsEncryptStaging({Dio? dio, this.logger})
   : baseUrl = letsEncryptStagingDirectoryUrl,
+    _dio = dio,
     _session = null;</code></pre>
 </section>
 

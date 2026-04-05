@@ -1,12 +1,16 @@
+// Wire adapters intentionally use a library directive for clearer generated docs.
+// The adapter docs are short enough, but the directive comment itself is long.
+// ignore_for_file: lines_longer_than_80_chars
 // ignore_for_file: unnecessary_library_name
 
 /// @nodoc
 library order_resource;
 
-import 'package:acme_client/src/model/identifiers.dart';
-import 'package:acme_client/src/model/order.dart';
-import 'package:acme_client/src/wire/identifier_resource.dart';
 import 'package:dio/dio.dart';
+
+import '../model/identifiers.dart';
+import '../model/order.dart';
+import 'identifier_resource.dart';
 
 class OrderResource {
   OrderResource({
@@ -29,33 +33,29 @@ class OrderResource {
   final String? certificate;
   final List<Identifier>? identifiers;
 
-  factory OrderResource._fromMap(Map<String, dynamic> json) {
-    return OrderResource(
-      status: json['status'] as String?,
-      authorizations: (json['authorizations'] as List?)?.cast<String>(),
-      certificate: json['certificate'] as String?,
-      expires: _parseOrderDateTime(json['expires']),
-      finalizeUrl: json['finalize'] as String?,
-      identifiers: acmeIdentifierListFromResources(
-        acmeIdentifierResourceListFromValue(json['identifiers']),
-      ),
-      notAfter: _parseOrderDateTime(json['notAfter']),
-      notBefore: _parseOrderDateTime(json['notBefore']),
-    );
-  }
+  factory OrderResource._fromMap(Map<String, dynamic> json) => OrderResource(
+    status: json['status'] as String?,
+    authorizations: (json['authorizations'] as List?)?.cast<String>(),
+    certificate: json['certificate'] as String?,
+    expires: _parseOrderDateTime(json['expires']),
+    finalizeUrl: json['finalize'] as String?,
+    identifiers: acmeIdentifierListFromResources(
+      acmeIdentifierResourceListFromValue(json['identifiers']),
+    ),
+    notAfter: _parseOrderDateTime(json['notAfter']),
+    notBefore: _parseOrderDateTime(json['notBefore']),
+  );
 
-  Order _toDomain() {
-    return Order(
-      status: status,
-      authorizations: authorizations,
-      certificate: certificate,
-      expires: expires,
-      finalizeUrl: finalizeUrl,
-      identifiers: identifiers,
-      notAfter: notAfter,
-      notBefore: notBefore,
-    );
-  }
+  Order _toDomain() => Order(
+    status: status,
+    authorizations: authorizations,
+    certificate: certificate,
+    expires: expires,
+    finalizeUrl: finalizeUrl,
+    identifiers: identifiers,
+    notAfter: notAfter,
+    notBefore: notBefore,
+  );
 }
 
 DateTime? _parseOrderDateTime(Object? value) => switch (value) {
@@ -87,8 +87,10 @@ Order acmeOrderFromResponseMap(Map<String, dynamic> json) =>
 ///
 /// Why this exists: the response layer still needs a direct response adapter,
 /// but that adapter should live in the internal wire layer.
-Order acmeOrderFromResponse(Response response) {
-  final order = acmeOrderFromResponseMap(response.data as Map<String, dynamic>);
+Order acmeOrderFromResponse(Response<Object?> response) {
+  final order = acmeOrderFromResponseMap(
+    response.data! as Map<String, dynamic>,
+  );
   order.orderUrl = response.headers.map['Location']?.first ?? order.orderUrl;
   return order;
 }

@@ -1,11 +1,13 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/acme_client_exception.dart';
-import 'package:acme_client/src/acme_logger.dart';
-import 'package:acme_client/src/constants.dart';
-import 'package:acme_client/src/payloads/payloads.dart';
 import 'package:dio/dio.dart';
 import 'package:jose/jose.dart';
+
+import 'acme_client_exception.dart';
+import 'acme_exception_factory.dart';
+import 'acme_logger.dart';
+import 'constants.dart';
+import 'payloads/payloads.dart';
 
 class AcmeJwsManager {
   AcmeJwsManager(
@@ -54,12 +56,13 @@ class AcmeJwsManager {
       }
       builder.addRecipient(privateJwk, algorithm: 'RS256');
       if (useKid) {
-        builder.setProtectedHeader('kid', accountUrl!);
+        builder.setProtectedHeader('kid', accountUrl);
       } else {
         builder.setProtectedHeader('jwk', publicJwk.toJson());
       }
-      builder.setProtectedHeader('nonce', nonce);
-      builder.setProtectedHeader('url', url);
+      builder
+        ..setProtectedHeader('nonce', nonce)
+        ..setProtectedHeader('url', url);
 
       return builder.build();
     } on AcmeClientException {
@@ -107,7 +110,7 @@ class AcmeJwsManager {
   }
 
   /// @Throwing(AcmeNonceException, reason: 'the replay nonce header could not be read from the response')
-  void updateNonce(Response response) {
+  void updateNonce(Response<Object?> response) {
     final replayNonce = _readReplayNonceHeader(
       response.headers,
       uri: response.realUri,
@@ -133,7 +136,7 @@ class AcmeJwsManager {
   /// @Throwing(AcmeNonceException, reason: 'the replay nonce request failed, returned no nonce, or returned multiple nonce values')
   Future<String> _getNonce(String newNonceUrl) async {
     try {
-      final response = await _dio.head(newNonceUrl);
+      final response = await _dio.head<Object?>(newNonceUrl);
       final replayNonce = _readReplayNonceHeader(
         response.headers,
         uri: Uri.tryParse(newNonceUrl),
@@ -148,10 +151,10 @@ class AcmeJwsManager {
       }
       return replayNonce;
     } on DioException catch (e, s) {
-      throw AcmeClientException.wrapDioException(
+      throw acmeWrapDioException(
         e,
         'Failed to fetch ACME replay nonce',
-        (exception, fallbackMessage) => AcmeNonceException.fromDioException(
+        (exception, fallbackMessage) => acmeNonceExceptionFromDioException(
           exception,
           fallbackMessage,
           reason: AcmeNonceExceptionReason.fetchFailed,
@@ -191,3 +194,5 @@ class AcmeJwsManager {
     logger?.call(level, message, error: error, stackTrace: stackTrace);
   }
 }
+// Internal JOSE error mapping intentionally preserves specific low-level failures.
+// ignore_for_file: avoid_catching_errors, lines_longer_than_80_chars

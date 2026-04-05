@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:acme_client/src/payloads/jws_payload.dart';
+import 'jws_payload.dart';
 
 class AccountRequestPayload implements JwsPayload {
   AccountRequestPayload({
