@@ -18,6 +18,7 @@ class DnsChallengeProof {
 
   DnsChallengeProof._(this._rRecord, this.challenge);
 
+  /// @Throwing(ArgumentError)
   @internal
   factory DnsChallengeProof.forAuthorization({
     required DomainIdentifier domainIdentifier,

@@ -6,6 +6,8 @@ import 'dns_challenge.dart';
 import 'dns_persist_challenge.dart';
 import 'http_challenge.dart';
 
+/// @Throwing(AcmeDnsPersistException)
+/// @Throwing(UnsupportedError)
 ValidationPayload acmeChallengeCreateValidationPayload(
   Challenge challenge,
 ) {

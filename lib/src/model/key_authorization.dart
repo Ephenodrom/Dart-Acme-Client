@@ -4,6 +4,7 @@ import '../acme_client_exception.dart';
 ///
 /// The wire form is `<token>.<account-key-digest>`.
 class KeyAuthorization {
+  /// @Throwing(AcmeValidationException)
   KeyAuthorization({required this.token, required this.accountKeyDigest}) {
     if (token.isEmpty) {
       throw const AcmeValidationException(
@@ -17,6 +18,7 @@ class KeyAuthorization {
     }
   }
 
+  /// @Throwing(AcmeValidationException)
   factory KeyAuthorization.parse(String value) {
     final separator = value.indexOf('.');
     if (separator <= 0 || separator == value.length - 1) {

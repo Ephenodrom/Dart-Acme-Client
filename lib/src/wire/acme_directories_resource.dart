@@ -71,6 +71,7 @@ AcmeDirectories acmeDirectoriesFromResponseMap(Map<String, dynamic> json) =>
 ///
 /// Why this exists: directory bootstrap is protocol-level work and the wire
 /// layer should own the HTTP-to-domain conversion.
+/// @Throwing(AcmeDirectoryException)
 Future<AcmeDirectories> acmeDirectoriesFetch(
   Dio dio,
   String baseUrl, {

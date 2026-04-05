@@ -11,6 +11,7 @@ import 'http_challenge.dart';
 import 'identifiers.dart';
 import 'order.dart';
 
+/// @Throwing(UnsupportedError)
 ChallengeType acmeChallengeTypeFor<TChallenge extends Challenge>() {
   if (TChallenge == DnsChallenge) {
     return ChallengeType.dns;
@@ -41,6 +42,7 @@ class ChallengeOrder<TChallenge extends Challenge> {
   final AcmeConnection _connection;
   final Account _account;
 
+  /// @Throwing(UnsupportedError)
   ChallengeType get challengeType => acmeChallengeTypeFor<TChallenge>();
 
   /// Returns whether the ACME order is ready to be finalized.
@@ -57,6 +59,7 @@ class ChallengeOrder<TChallenge extends Challenge> {
   ///
   /// Call this only after challenge validation has succeeded and [isReady]
   /// returns `true`.
+  /// @Throwing(AcmeConfigurationException)
   Future<void> finalize(
     CertificateCredentials credentials, {
     int retries = 5,
@@ -88,6 +91,7 @@ class ChallengeOrder<TChallenge extends Challenge> {
   ///
   /// The returned [ChallengeAuthorization] is still tied to the chosen
   /// challenge type for the order. The next step is usually `getChallenge()`.
+  /// @Throwing(AcmeAuthorizationException)
   Future<ChallengeAuthorization<TChallenge>> getAuthorization(
     DomainIdentifier identifier,
   ) async {

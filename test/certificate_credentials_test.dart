@@ -1,6 +1,7 @@
 import 'package:acme_client/acme_client.dart';
 import 'package:test/test.dart';
 
+/// @Throwing(ArgumentError)
 void main() {
   test('CertificateCredentials can be generated from identifiers', () {
     final credentials = CertificateCredentials.generate(

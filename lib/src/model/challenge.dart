@@ -44,6 +44,7 @@ abstract class Challenge {
     return null;
   }
 
+  /// @Throwing(AcmeValidationException)
   String requireToken() {
     final challengeToken = token;
     if (challengeToken == null || challengeToken.isEmpty) {
@@ -55,12 +56,14 @@ abstract class Challenge {
     return challengeToken;
   }
 
+  /// @Throwing(AcmeValidationException)
   KeyAuthorization buildKeyAuthorization(String accountKeyDigest) =>
       KeyAuthorization(
         token: requireToken(),
         accountKeyDigest: accountKeyDigest,
       );
 
+  /// @Throwing(StateError)
   Future<bool> validate({int maxAttempts = 15}) => acmeConnectionValidate(
     requireConnection(),
     this,
@@ -78,14 +81,17 @@ abstract class Challenge {
     return this;
   }
 
+  /// @Throwing(StateError)
   AcmeConnection requireConnection() =>
       _connection ??
       (throw StateError('Challenge is not attached to an ACME connection'));
 
+  /// @Throwing(StateError)
   Account requireAccount() =>
       _account ??
       (throw StateError('Challenge is not attached to an ACME account'));
 
+  /// @Throwing(StateError)
   Identifier requireIdentifier() =>
       _identifier ??
       (throw StateError('Challenge is not attached to an identifier'));

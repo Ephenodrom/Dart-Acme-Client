@@ -41,6 +41,8 @@ class Authorization implements AuthorizationLike {
         false;
   }
 
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(AcmeConfigurationException)
   Challenge getChallenge({ChallengeType? challengeType}) {
     final selectedChallengeType =
         challengeType ??
@@ -90,6 +92,7 @@ class Authorization implements AuthorizationLike {
     return challenge;
   }
 
+  /// @Throwing(AcmeClientException)
   static Future<List<Authorization>> _fetchAll(
     AcmeConnection connection,
     Account account,
@@ -145,6 +148,7 @@ class Authorization implements AuthorizationLike {
 /// Why this exists: `Order.getAuthorizations` is the public fluent API, so the
 /// protocol-level authorization fetcher should not be documented as a class
 /// method on `Authorization`.
+/// @Throwing(AcmeClientException)
 Future<List<Authorization>> acmeAuthorizationFetchAll(
   AcmeConnection connection,
   Account account,

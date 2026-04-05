@@ -59,6 +59,8 @@ class Account {
   /// @Throwing(AcmeJwsException, reason: 'order creation request could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for order creation')
   /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected or failed to create the order')
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(StateError)
   Future<ChallengeOrder<TChallenge>> _createOrder<TChallenge extends Challenge>(
     Order order,
   ) async {
@@ -121,6 +123,8 @@ class Account {
   ///
   /// If the CA does not offer `http-01` for one of the requested identifiers,
   /// this method throws and includes the challenge types that were offered.
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(StateError)
   Future<ChallengeOrder<HttpChallenge>> createOrderForHttp({
     required List<DomainIdentifier> identifiers,
     DateTime? notBefore,
@@ -138,6 +142,8 @@ class Account {
   ///
   /// If the CA does not offer `dns-01` for one of the requested identifiers,
   /// this method throws and includes the challenge types that were offered.
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(StateError)
   Future<ChallengeOrder<DnsChallenge>> createOrderForDns({
     required List<DomainIdentifier> identifiers,
     DateTime? notBefore,
@@ -154,6 +160,8 @@ class Account {
   /// If the CA does not offer `dns-persist-01` for one of the requested
   /// identifiers, this method throws and includes the challenge types that were
   /// offered.
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(StateError)
   Future<ChallengeOrder<DnsPersistChallenge>> createOrderForDnsPersist({
     required List<DomainIdentifier> identifiers,
     DateTime? notBefore,
@@ -172,6 +180,7 @@ class Account {
   /// Most callers can skip this entirely and go straight to one of the
   /// `createOrderFor...` methods if they already know which challenge they want
   /// to use.
+  /// @Throwing(StateError)
   Future<List<ChallengeType>> discoverAvailableChallenges({
     required DomainIdentifier identifier,
     DateTime? notBefore,
@@ -208,6 +217,8 @@ class Account {
   ///
   /// This is mainly an inspection or bookkeeping API. It is not normally part
   /// of the standard issuance flow.
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<List<OrderUrl>> listOrderUrls() =>
       acmeAccountFetchOrderUrls(_requireConnection(), this);
 
@@ -216,9 +227,11 @@ class Account {
   /// Use this when you already have an attached [Account] and want to persist
   /// or reserialize the same ACME account identity for later use, such as
   /// renewals or service restarts.
+  /// @Throwing(StateError)
   AcmeAccountCredentials toAccountCredentials() =>
       acmeConnectionToAccountCredentials(_requireConnection());
 
+  /// @Throwing(StateError)
   AcmeConnection _requireConnection() =>
       _connection ??
       (throw StateError('Account is not attached to an ACME connection'));
@@ -232,6 +245,7 @@ class Account {
   /// This is the normal entrypoint after the first run of an application. If
   /// you have already generated and stored [AcmeAccountCredentials], call this
   /// to reattach to the same ACME account for new orders or renewals.
+  /// @Throwing(AcmeClientException)
   static Future<Account> fetch(
     AcmeAccountCredentials credentials, {
     AcmeConnection connection = AcmeConnection.production,
@@ -290,6 +304,7 @@ class Account {
   /// Call this once when bootstrapping new [AcmeAccountCredentials]. After the
   /// account exists, persist those credentials and use [fetch] on future runs
   /// rather than creating a new account each time.
+  /// @Throwing(AcmeClientException)
   static Future<Account> create(
     AcmeAccountCredentials credentials, {
     AcmeConnection connection = AcmeConnection.production,
@@ -357,6 +372,8 @@ Account acmeAccountAttachConnection(
 ///
 /// Why this exists: `Account.listOrderUrls` is public, but the raw protocol
 /// helper should stay out of the generated API for the `Account` class itself.
+/// @Throwing(AcmeClientException)
+/// @Throwing(AcmeOrderException)
 Future<List<OrderUrl>> acmeAccountFetchOrderUrls(
   AcmeConnection connection,
   Account account,

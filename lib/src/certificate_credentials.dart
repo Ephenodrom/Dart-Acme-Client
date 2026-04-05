@@ -38,6 +38,7 @@ class CertificateCredentials {
   /// Reuse the same stored credentials on renewal if you want to keep the same
   /// certificate private key. Generate new credentials on renewal if you want
   /// key rotation.
+  /// @Throwing(ArgumentError)
   factory CertificateCredentials.generate({
     required List<DomainIdentifier> identifiers,
     int rsaKeySize = 2048,

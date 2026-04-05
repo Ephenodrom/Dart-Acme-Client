@@ -97,6 +97,8 @@ class AcmeConnection {
     );
   }
 
+  /// @Throwing(AcmeConfigurationException)
+  /// @Throwing(StateError)
   Future<void> _init() async {
     _validateData();
     _requireSession().directories = await acmeDirectoriesFetch(
@@ -111,6 +113,9 @@ class AcmeConnection {
     );
   }
 
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(AcmeValidationException)
+  /// @Throwing(StateError)
   Future<bool> _validate(Challenge challenge, {int maxAttempts = 15}) async {
     final session = _requireSession();
     final validationPayload = acmeChallengeCreateValidationPayload(challenge);
@@ -265,6 +270,7 @@ class AcmeConnection {
     return false;
   }
 
+  /// @Throwing(StateError)
   AcmeAccountCredentials _toAccountCredentials() {
     final credentials = _requireSession().credentials;
     return AcmeAccountCredentials(
@@ -275,6 +281,8 @@ class AcmeConnection {
     );
   }
 
+  /// @Throwing(AcmeConfigurationException)
+  /// @Throwing(StateError)
   void _validateData() {
     final credentials = _requireSession().credentials;
     for (final element in credentials.contacts) {
@@ -294,18 +302,23 @@ class AcmeConnection {
     }
   }
 
+  /// @Throwing(StateError)
   _AcmeConnectionSession _requireSession() =>
       _session ??
       (throw StateError('AcmeConnection is not bound to account credentials'));
 
+  /// @Throwing(StateError)
   Dio get _resolvedDio => _requireSession().dio;
 
+  /// @Throwing(StateError)
   AcmeJwsManager get _jwsManager => _requireSession().jwsManager;
 
+  /// @Throwing(StateError)
   String get _accountKeyDigest => acmeAccountKeyDigestFromPublicKeyPem(
     _requireSession().credentials.publicKeyPem,
   );
 
+  /// @Throwing(StateError)
   void _bindAccount(Account account) {
     _requireSession().account = account;
   }
@@ -314,20 +327,25 @@ class AcmeConnection {
 
   AcmeDirectories? get _directories => _session?.directories;
 
+  /// @Throwing(StateError)
   bool get _acceptTerms => _requireSession().credentials.acceptTerms;
 
+  /// @Throwing(StateError)
   List<String> get _contacts => _requireSession().credentials.contacts;
 
+  /// @Throwing(StateError)
   void _setTestNonce(String? value) {
     _requireSession().jwsManager.nonce = value;
   }
 
   String? get _testNonce => _session?.jwsManager.nonce;
 
+  /// @Throwing(StateError)
   void _setTestAccount(Account? value) {
     _requireSession().account = value;
   }
 
+  /// @Throwing(StateError)
   void _setTestDirectories(AcmeDirectories? value) {
     _requireSession().directories = value;
   }
@@ -357,6 +375,8 @@ AcmeConnection acmeConnectionBindCredentials(
 /// Why this exists: `Account.create` and `Account.fetch` need this bootstrap
 /// step, but it is an implementation detail rather than part of the public
 /// `AcmeConnection` API.
+/// @Throwing(AcmeConfigurationException)
+/// @Throwing(StateError)
 Future<void> acmeConnectionInit(AcmeConnection connection) =>
     connection._init();
 
@@ -364,6 +384,9 @@ Future<void> acmeConnectionInit(AcmeConnection connection) =>
 ///
 /// Why this exists: end users validate via `Account.validate`, so the wire
 /// protocol entrypoint should stay off the public `AcmeConnection` docs.
+/// @Throwing(AcmeClientException)
+/// @Throwing(AcmeValidationException)
+/// @Throwing(StateError)
 Future<bool> acmeConnectionValidate(
   AcmeConnection connection,
   Challenge challenge, {
@@ -410,6 +433,7 @@ Future<bool> acmeConnectionSelfHttpTest(
 ///
 /// Why this exists: `Account.toAccountCredentials` needs access to the bound
 /// session data, but the session itself should stay hidden from API consumers.
+/// @Throwing(StateError)
 AcmeAccountCredentials acmeConnectionToAccountCredentials(
   AcmeConnection connection,
 ) => connection._toAccountCredentials();
@@ -418,6 +442,8 @@ AcmeAccountCredentials acmeConnectionToAccountCredentials(
 ///
 /// Why this exists: tests and bootstrap code need deterministic validation
 /// without making `validateData` part of the public class API.
+/// @Throwing(AcmeConfigurationException)
+/// @Throwing(StateError)
 void acmeConnectionValidateData(AcmeConnection connection) =>
     connection._validateData();
 
@@ -446,6 +472,7 @@ String acmeConnectionAccountKeyDigest(AcmeConnection connection) =>
 ///
 /// Why this exists: fluent account/order operations need session affinity, but
 /// that wiring should not appear as a public method on `AcmeConnection`.
+/// @Throwing(StateError)
 void acmeConnectionBindAccount(AcmeConnection connection, Account account) =>
     connection._bindAccount(account);
 
@@ -481,6 +508,7 @@ List<String> acmeConnectionContacts(AcmeConnection connection) =>
 ///
 /// Why this exists: tests need deterministic nonce control, but nonce mutation
 /// should never appear in public API docs for `AcmeConnection`.
+/// @Throwing(StateError)
 void acmeConnectionTestSetNonce(AcmeConnection connection, String? value) =>
     connection._setTestNonce(value);
 
@@ -495,6 +523,7 @@ String? acmeConnectionTestNonce(AcmeConnection connection) =>
 ///
 /// Why this exists: exception-path tests need a seeded session without exposing
 /// mutable account hooks on the public `AcmeConnection` type.
+/// @Throwing(StateError)
 void acmeConnectionTestSetAccount(AcmeConnection connection, Account? value) =>
     connection._setTestAccount(value);
 
@@ -502,6 +531,7 @@ void acmeConnectionTestSetAccount(AcmeConnection connection, Account? value) =>
 ///
 /// Why this exists: tests need to bypass network discovery, but directory
 /// injection belongs in test support rather than public API docs.
+/// @Throwing(StateError)
 void acmeConnectionTestSetDirectories(
   AcmeConnection connection,
   AcmeDirectories? value,

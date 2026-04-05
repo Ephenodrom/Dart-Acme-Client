@@ -12,6 +12,9 @@ import 'package:yaml/yaml.dart';
 const _configPathEnv = 'ACME_LE_STAGING_CONFIG_PATH';
 const _defaultConfigPath = 'tool/le-staging/le-staging.local.yaml';
 
+/// @Throwing(ArgumentError)
+/// @Throwing(StateError)
+/// @Throwing(YamlException)
 void main() {
   final config = _loadConfig();
 
@@ -134,6 +137,9 @@ void main() {
   });
 }
 
+/// @Throwing(ArgumentError)
+/// @Throwing(StateError)
+/// @Throwing(YamlException)
 _LeStagingConfig _loadConfig() {
   final configPath = Platform.environment[_configPathEnv] ?? _defaultConfigPath;
   final configFile = File(configPath);
@@ -204,6 +210,7 @@ Map<String, Object?>? _findDnsPersistChallenge(
   return null;
 }
 
+/// @Throwing(ArgumentError)
 Future<List<String>> _issueDnsPersistCertificate({
   required Account account,
   required DomainIdentifier identifier,
@@ -275,6 +282,7 @@ class _CloudflareDnsPublisher {
 
   String? _zoneId;
 
+  /// @Throwing(StateError)
   Future<void> upsertTxtRecord({
     required String host,
     required String value,
@@ -307,6 +315,7 @@ class _CloudflareDnsPublisher {
     );
   }
 
+  /// @Throwing(StateError)
   Future<void> deleteTxtRecordIfPresent({required String host}) async {
     final zoneId = await _getZoneId();
     final existing = await _findTxtRecord(zoneId, host);
@@ -317,6 +326,7 @@ class _CloudflareDnsPublisher {
     await _dio.delete<Object?>('/zones/$zoneId/dns_records/${existing.id}');
   }
 
+  /// @Throwing(StateError)
   Future<String> _getZoneId() async {
     final cached = _zoneId;
     if (cached != null) {

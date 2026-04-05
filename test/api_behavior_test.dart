@@ -10,6 +10,8 @@ import 'package:acme_client/src/wire/challenge_resource.dart';
 import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 
+/// @Throwing(ArgumentError)
+/// @Throwing(StateError)
 void main() {
   group('account resource mapping', () {
     test('defaults missing account fields to clean public values', () {
@@ -425,6 +427,7 @@ AcmeConnection _boundConnection(Dio dio) => acmeConnectionBindCredentials(
   ),
 );
 
+/// @Throwing(StateError)
 Dio _buildMockDio(
   Response<Object?> Function(RequestOptions options) responder,
 ) {

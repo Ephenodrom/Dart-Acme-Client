@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:acme_client/acme_client.dart';
 
+/// @Throwing(StateError)
 void main(List<String> args) async {
   final accountCredentials = AcmeAccountCredentials.fromJson(
     await File('account-credentials.json').readAsString(),

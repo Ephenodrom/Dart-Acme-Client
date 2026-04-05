@@ -27,6 +27,7 @@ class ChallengeResource {
   final String? token;
   final List<String> issuerDomainNames;
 
+  /// @Throwing(ArgumentError)
   factory ChallengeResource._fromMap(Map<String, dynamic> json) {
     final type = ChallengeTypeWireValue.tryFromWireValue(
       json['type'] as String,
@@ -65,6 +66,7 @@ class ChallengeResource {
 ///
 /// Why this exists: ACME response decoding belongs in the internal wire layer,
 /// not on the public `Challenge` model hierarchy.
+/// @Throwing(ArgumentError)
 ChallengeResource acmeChallengeResourceFromMap(Map<String, dynamic> json) =>
     ChallengeResource._fromMap(json);
 
@@ -72,6 +74,7 @@ ChallengeResource acmeChallengeResourceFromMap(Map<String, dynamic> json) =>
 ///
 /// Why this exists: authorization decoding needs a shared list converter while
 /// keeping public challenge models free of wire parsing helpers.
+/// @Throwing(ArgumentError)
 List<ChallengeResource>? acmeChallengeResourceListFromValue(Object? value) =>
     value is List
     ? value

@@ -26,6 +26,7 @@ class AcmeJwsManager {
 
   /// @Throwing(AcmeJwsException, reason: 'JSON Web Signature creation failed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained before creating the JSON Web Signature')
+  /// @Throwing(AcmeClientException)
   Future<JsonWebSignature> createJws(
     String url, {
     String? newNonceUrl,
@@ -134,6 +135,7 @@ class AcmeJwsManager {
   }
 
   /// @Throwing(AcmeNonceException, reason: 'the replay nonce request failed, returned no nonce, or returned multiple nonce values')
+  /// @Throwing(AcmeClientException)
   Future<String> _getNonce(String newNonceUrl) async {
     try {
       final response = await _dio.head<Object?>(newNonceUrl);

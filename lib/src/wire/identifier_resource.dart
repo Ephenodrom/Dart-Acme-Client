@@ -20,6 +20,7 @@ class IdentifierResource {
         value: json['value'] as String?,
       );
 
+  /// @Throwing(ArgumentError)
   Identifier _toDomain() => switch (type) {
     IdentifierType.dns => DomainIdentifier(
       value ??
@@ -63,6 +64,7 @@ List<IdentifierResource>? acmeIdentifierResourceListFromValue(Object? value) =>
 ///
 /// Why this exists: the public `Identifier` hierarchy should stay free of raw
 /// ACME parsing concerns.
+/// @Throwing(ArgumentError)
 Identifier acmeIdentifierFromResource(IdentifierResource resource) =>
     resource._toDomain();
 

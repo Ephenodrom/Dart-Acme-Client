@@ -14,6 +14,7 @@ extension ChallengeTypeWireValue on ChallengeType {
     _ => null,
   };
 
+  /// @Throwing(ArgumentError)
   static ChallengeType fromWireValue(String value) => switch (value) {
     'dns-01' => ChallengeType.dns,
     'http-01' => ChallengeType.http,

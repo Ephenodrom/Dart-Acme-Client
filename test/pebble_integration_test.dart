@@ -18,6 +18,7 @@ const _pebbleTrustedRootEnv = 'ACME_PEBBLE_TRUSTED_ROOT';
 const _pebbleConfigPathEnv = 'ACME_PEBBLE_CONFIG_PATH';
 const _defaultPebbleConfigPath = 'tool/pebble/pebble-test.local.json';
 
+/// @Throwing(ArgumentError)
 void main() {
   final enabled = Platform.environment[_pebbleEnabledEnv] == 'true';
   final baseUrl =
@@ -155,6 +156,7 @@ Future<Account> _fetchOrCreateAccount(
   }
 }
 
+/// @Throwing(ArgumentError)
 Future<List<String>> _issueHttpCertificate({
   required Account account,
   required DomainIdentifier identifier,
@@ -189,6 +191,7 @@ Future<List<String>> _issueHttpCertificate({
   return certs;
 }
 
+/// @Throwing(ArgumentError)
 Future<List<String>> _issueDnsCertificate({
   required Account account,
   required DomainIdentifier identifier,
@@ -216,6 +219,7 @@ Future<List<String>> _issueDnsCertificate({
   return certs;
 }
 
+/// @Throwing(ArgumentError)
 Future<List<String>> _issueDnsPersistCertificate({
   required Account account,
   required DomainIdentifier identifier,
@@ -258,6 +262,7 @@ Future<void> _waitForOrderReady<TChallenge extends Challenge>(
   fail('Order did not become ready in time');
 }
 
+/// @Throwing(ArgumentError)
 AcmeAccountCredentials _loadPebbleCredentials(String configPath) {
   final configFile = File(configPath);
   if (!configFile.existsSync()) {

@@ -7,6 +7,7 @@ extension IdentifierTypeWireValue on IdentifierType {
     IdentifierType.dns => 'dns',
   };
 
+  /// @Throwing(ArgumentError)
   static IdentifierType fromWireValue(String value) => switch (value) {
     'dns' => IdentifierType.dns,
     _ => throw ArgumentError.value(

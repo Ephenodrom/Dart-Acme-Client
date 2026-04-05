@@ -66,18 +66,23 @@ class Order {
   /// @Throwing(AcmeJwsException, reason: 'order info request could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated for order lookup')
   /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected or failed to return the order')
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<Order> refresh() async => acmeOrderAttachConnection(
     await acmeOrderFetch(_requireConnection(), _requireAccount(), this),
     _requireConnection(),
     _requireAccount(),
   );
 
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<bool> isReady() async => (await refresh()).status == 'ready';
 
   /// @Throwing(AcmeAccountKeyDigestException, reason: 'the account key thumbprint could not be generated for authorization processing')
   /// @Throwing(AcmeAuthorizationException, reason: 'the ACME server rejected or failed to return authorization data')
   /// @Throwing(AcmeJwsException, reason: 'authorization lookup requests could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching authorizations')
+  /// @Throwing(StateError)
   Future<List<Authorization>> getAuthorizations() =>
       _cachedAuthorizations != null
       ? Future.value(_cachedAuthorizations)
@@ -94,6 +99,9 @@ class Order {
           return _cachedAuthorizations!;
         });
 
+  /// @Throwing(AcmeAuthorizationException)
+  /// @Throwing(AcmeConfigurationException)
+  /// @Throwing(StateError)
   Future<Authorization> getAuthorizationForIdentifier(
     Identifier domainIdentifier,
   ) async {
@@ -135,6 +143,8 @@ class Order {
   /// @Throwing(AcmeJwsException, reason: 'order finalization requests could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated during order finalization')
   /// @Throwing(AcmeOrderException, reason: 'the order could not be finalized or did not reach a valid state')
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<Order> finalize(String csr, {int retries = 5}) async {
     final connection = _requireConnection();
     final account = _requireAccount();
@@ -181,6 +191,8 @@ class Order {
   /// @Throwing(AcmeCertificateException, reason: 'the certificate chain could not be fetched from the ACME server')
   /// @Throwing(AcmeJwsException, reason: 'certificate download request could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while fetching the certificate chain')
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<List<String>> getCertificates() async {
     final connection = _requireConnection();
     final account = _requireAccount();
@@ -229,10 +241,12 @@ class Order {
     }
   }
 
+  /// @Throwing(StateError)
   AcmeConnection _requireConnection() =>
       _connection ??
       (throw StateError('Order is not attached to an ACME connection'));
 
+  /// @Throwing(StateError)
   Account _requireAccount() =>
       _account ??
       (throw StateError('Order is not attached to an ACME account'));
@@ -257,6 +271,7 @@ class Order {
       )
       .toList();
 
+  /// @Throwing(StateError)
   Future<List<Challenge>> discoverAvailableChallenges(
     Identifier identifier,
   ) async =>
@@ -279,6 +294,7 @@ class Order {
   /// @Throwing(AcmeJwsException, reason: 'finalized order submission could not be signed')
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be obtained or updated while submitting a finalized order')
   /// @Throwing(AcmeOrderException, reason: 'the ACME server rejected the finalized order submission')
+  /// @Throwing(AcmeClientException)
   static Future<_OrderResults> _submitFinalization(
     AcmeConnection connection,
     Account account,
@@ -326,6 +342,8 @@ class Order {
 
   /// @Throwing(AcmeNonceException, reason: 'a replay nonce could not be updated while polling a finalized order')
   /// @Throwing(AcmeOrderException, reason: 'polling the finalized order failed')
+  /// @Throwing(AcmeClientException)
+  /// @Throwing(StateError)
   Future<_OrderResults> _pollFinalizedOrder(AcmeConnection connection) async {
     await Future.delayed(const Duration(seconds: 4), () {});
     final account = _requireAccount();
@@ -382,6 +400,7 @@ Order acmeOrderAttachConnection(
 ///
 /// Why this exists: `Account.createOrder` is the intended public entrypoint, so
 /// the lower-level protocol helper stays off the `Order` class documentation.
+/// @Throwing(AcmeClientException)
 Future<Order> acmeOrderCreate(
   AcmeConnection connection,
   Account account,
@@ -431,6 +450,7 @@ Map<String, dynamic> acmeOrderToCreationPayload(Order order) =>
 ///
 /// Why this exists: `Order.refresh` is the intended public entrypoint, so the
 /// raw fetch helper remains a package-level implementation detail.
+/// @Throwing(AcmeClientException)
 Future<Order> acmeOrderFetch(
   AcmeConnection connection,
   Account account,

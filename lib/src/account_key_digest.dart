@@ -6,6 +6,7 @@ import 'acme_util.dart';
 class AccountKeyDigest {
   const AccountKeyDigest(this.value);
 
+  /// @Throwing(AcmeAccountKeyDigestException)
   factory AccountKeyDigest.fromPublicKeyPem(String publicKeyPem) {
     try {
       return AccountKeyDigest(
@@ -38,6 +39,7 @@ class AccountKeyDigest {
   String toString() => value;
 }
 
+/// @Throwing(AcmeAccountKeyDigestException)
 String acmeAccountKeyDigestFromPublicKeyPem(String publicKeyPem) =>
     AccountKeyDigest.fromPublicKeyPem(publicKeyPem).value;
 // Internal exception mapping intentionally normalizes low-level key parsing

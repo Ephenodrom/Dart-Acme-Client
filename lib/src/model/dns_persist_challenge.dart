@@ -39,6 +39,7 @@ class DnsPersistChallenge extends Challenge {
   ///
   /// The returned proof tells you exactly what persistent TXT record to
   /// publish before validation begins.
+  /// @Throwing(AcmeDnsPersistException)
   DnsPersistChallengeProof buildProof() {
     final domainIdentifier = requireIdentifier() as DomainIdentifier;
     final accountUri = requireAccount().accountURL!;
@@ -65,6 +66,7 @@ class DnsPersistChallenge extends Challenge {
   /// [AcmeConnection] only for logger output and shared client configuration;
   /// it does not contact the CA. DNS visibility is checked via Google Public
   /// DNS.
+  /// @Throwing(AcmeDnsPersistException)
   Future<bool> selfTest({int maxAttempts = 15}) =>
       acmeConnectionSelfDnsPersistTest(
         requireConnection(),

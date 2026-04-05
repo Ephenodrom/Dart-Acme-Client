@@ -6,6 +6,7 @@ import 'package:acme_client/src/acme_connection.dart';
 import 'package:acme_client/src/model/account.dart';
 import 'package:test/test.dart';
 
+/// @Throwing(ArgumentError)
 void main() {
   test('AcmeAccountCredentials can be generated from scratch', () {
     final credentials = AcmeAccountCredentials.generate(

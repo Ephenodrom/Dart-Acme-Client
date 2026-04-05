@@ -6,6 +6,7 @@ extension DnsPersistPolicyWireValue on DnsPersistPolicy {
     DnsPersistPolicy.wildcard => 'wildcard',
   };
 
+  /// @Throwing(ArgumentError)
   static DnsPersistPolicy fromWireValue(String value) => switch (value) {
     '' => DnsPersistPolicy.fqdn,
     'wildcard' => DnsPersistPolicy.wildcard,
