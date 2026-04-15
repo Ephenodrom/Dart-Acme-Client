@@ -1,10 +1,8 @@
-// ignore_for_file: non_constant_identifier_names
+// These wire keys intentionally use the ACME specification's exact casing.
+// ignore_for_file: constant_identifier_names
 
-final String URL_NEW_NONCE = 'newNonce';
-final String URL_NEW_ORDER = 'newOrder';
-final String URL_REVOKE_CERT = 'revokeCert';
-final String URL_NEW_ACCOUNT = 'newAccount';
-final String HEADER_REPLAY_NONCE = 'replay-nonce';
-
-final String VALIDATION_DNS = 'dns-01';
-final String VALIDATION_HTTP = 'http-01';
+const URL_NEW_NONCE = 'newNonce';
+const URL_NEW_ORDER = 'newOrder';
+const URL_REVOKE_CERT = 'revokeCert';
+const URL_NEW_ACCOUNT = 'newAccount';
+const HEADER_REPLAY_NONCE = 'replay-nonce';

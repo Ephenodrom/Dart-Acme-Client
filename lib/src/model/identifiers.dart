@@ -1,16 +1,37 @@
-import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 
-part 'identifiers.g.dart';
+enum IdentifierType { dns }
 
-@JsonSerializable(includeIfNull: false)
-class Identifiers {
-  String? type;
-  String? value;
+extension IdentifierTypeWireValue on IdentifierType {
+  String get wireValue => switch (this) {
+    IdentifierType.dns => 'dns',
+  };
 
-  Identifiers({this.type, this.value});
+  /// @Throwing(ArgumentError)
+  static IdentifierType fromWireValue(String value) => switch (value) {
+    'dns' => IdentifierType.dns,
+    _ => throw ArgumentError.value(
+      value,
+      'value',
+      'Unsupported identifier type',
+    ),
+  };
+}
 
-  factory Identifiers.fromJson(Map<String, dynamic> json) =>
-      _$IdentifiersFromJson(json);
+abstract class Identifier {
+  const Identifier(this.value);
 
-  Map<String, dynamic> toJson() => _$IdentifiersToJson(this);
+  @nonVirtual
+  final String value;
+
+  IdentifierType get identifierType;
+
+  String get type => identifierType.wireValue;
+}
+
+class DomainIdentifier extends Identifier {
+  const DomainIdentifier(super.value);
+
+  @override
+  IdentifierType get identifierType => IdentifierType.dns;
 }

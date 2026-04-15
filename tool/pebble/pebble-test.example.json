@@ -1,0 +1,8 @@
+{
+  "privateKeyPem": "-----BEGIN PRIVATE KEY-----\nreplace-with-your-local-pebble-test-private-key\n-----END PRIVATE KEY-----\n",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nreplace-with-your-local-pebble-test-public-key\n-----END PUBLIC KEY-----\n",
+  "acceptTerms": true,
+  "contacts": [
+    "mailto:test@example.com"
+  ]
+}

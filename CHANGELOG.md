@@ -1,4 +1,6 @@
 # Changelog
+# [2.0.0] 2026-04-05
+* added dns-persist-01 and major refactor to create a fluent api.
 
 ## [1.3.0] - 2023-12-12
 
