@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'account_key_digest.dart';
 import 'acme_account_credentials.dart';
 import 'acme_client_exception.dart';
+import 'acme_dns_resolver.dart';
 import 'acme_exception_factory.dart';
 import 'acme_jws_manager.dart';
 import 'acme_logger.dart';
@@ -34,6 +35,7 @@ class AcmeConnection {
 
   final String baseUrl;
   final Dio? _dio;
+  final AcmeDnsResolver dnsResolver;
   final AcmeLogFn? logger;
   final _AcmeConnectionSession? _session;
 
@@ -43,6 +45,7 @@ class AcmeConnection {
   const AcmeConnection({
     this.baseUrl = letsEncryptDirectoryUrl,
     Dio? dio,
+    this.dnsResolver = const AcmeDnsResolver.google(),
     this.logger,
   }) : _dio = dio,
        _session = null;
@@ -50,19 +53,25 @@ class AcmeConnection {
   /// Creates a connection to Let's Encrypt production.
   ///
   /// This is the normal choice for real certificate issuance.
-  const AcmeConnection.letsEncrypt({Dio? dio, this.logger})
-    : baseUrl = letsEncryptDirectoryUrl,
-      _dio = dio,
-      _session = null;
+  const AcmeConnection.letsEncrypt({
+    Dio? dio,
+    this.dnsResolver = const AcmeDnsResolver.google(),
+    this.logger,
+  }) : baseUrl = letsEncryptDirectoryUrl,
+       _dio = dio,
+       _session = null;
 
   /// Creates a connection to Let's Encrypt staging.
   ///
   /// Use this for development and integration testing to avoid production rate
   /// limits while you are still building your flow.
-  const AcmeConnection.letsEncryptStaging({Dio? dio, this.logger})
-    : baseUrl = letsEncryptStagingDirectoryUrl,
-      _dio = dio,
-      _session = null;
+  const AcmeConnection.letsEncryptStaging({
+    Dio? dio,
+    this.dnsResolver = const AcmeDnsResolver.google(),
+    this.logger,
+  }) : baseUrl = letsEncryptStagingDirectoryUrl,
+       _dio = dio,
+       _session = null;
 
   /// Creates a connection to a local Pebble test server.
   ///
@@ -70,14 +79,18 @@ class AcmeConnection {
   /// Callers often also supply a custom `Dio` here so they can trust Pebble's
   /// local test certificate or disable certificate checks in a controlled test
   /// environment.
-  const AcmeConnection.pebble({Dio? dio, this.logger})
-    : baseUrl = pebbleDirectoryUrl,
-      _dio = dio,
-      _session = null;
+  const AcmeConnection.pebble({
+    Dio? dio,
+    this.dnsResolver = const AcmeDnsResolver.challtestsrv(),
+    this.logger,
+  }) : baseUrl = pebbleDirectoryUrl,
+       _dio = dio,
+       _session = null;
 
   AcmeConnection._bound({
     required this.baseUrl,
     required this.logger,
+    required this.dnsResolver,
     required Dio dio,
     required _AcmeConnectionSession session,
   }) : _dio = dio,
@@ -88,6 +101,7 @@ class AcmeConnection {
     return AcmeConnection._bound(
       baseUrl: baseUrl,
       logger: logger,
+      dnsResolver: dnsResolver,
       dio: resolvedDio,
       session: _AcmeConnectionSession(
         dio: resolvedDio,
@@ -205,17 +219,12 @@ class AcmeConnection {
     int maxAttempts = 15,
   }) async {
     for (var i = 0; i < maxAttempts; i++) {
-      final records = await DnsUtils.lookupRecord(
-        data.txtRecordName,
-        RRecordType.TXT,
-      );
-      if (records != null &&
-          records.isNotEmpty &&
-          records.first.data == data.txtRecordValue) {
-        _log(AcmeLogLevel.debug, 'Found record via Google DNS');
+      final records = await dnsResolver.lookupTxt(data.txtRecordName);
+      if (records.any((record) => record == data.txtRecordValue)) {
+        _log(AcmeLogLevel.debug, 'Found DNS challenge record');
         return true;
       }
-      _log(AcmeLogLevel.debug, 'DNS record not visible via Google DNS yet');
+      _log(AcmeLogLevel.debug, 'DNS challenge record not visible yet');
       await Future.delayed(const Duration(seconds: 4), () {});
     }
     return false;
@@ -226,19 +235,14 @@ class AcmeConnection {
     int maxAttempts = 15,
   }) async {
     for (var i = 0; i < maxAttempts; i++) {
-      final records = await DnsUtils.lookupRecord(
-        data.txtRecordName,
-        RRecordType.TXT,
-      );
-      if (records != null &&
-          records.isNotEmpty &&
-          records.any((record) => record.data == data.txtRecordValue)) {
-        _log(AcmeLogLevel.debug, 'Found persistent DNS record via Google DNS');
+      final records = await dnsResolver.lookupTxt(data.txtRecordName);
+      if (records.any((record) => record == data.txtRecordValue)) {
+        _log(AcmeLogLevel.debug, 'Found persistent DNS challenge record');
         return true;
       }
       _log(
         AcmeLogLevel.debug,
-        'Persistent DNS record not visible via Google DNS yet',
+        'Persistent DNS challenge record not visible yet',
       );
       await Future.delayed(const Duration(seconds: 4), () {});
     }

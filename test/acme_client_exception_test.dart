@@ -8,6 +8,7 @@ import 'package:acme_client/src/model/account.dart';
 import 'package:acme_client/src/model/acme_directories.dart';
 import 'package:acme_client/src/model/dns_challenge.dart';
 import 'package:acme_client/src/model/dns_persist_challenge.dart';
+import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 
 /// @Throwing(ArgumentError, reason: 'matcher input validation may fail while asserting thrown exceptions in tests')
@@ -93,17 +94,37 @@ void main() {
   );
 
   test(
-    'validate repackages key digest failures as AcmeAccountKeyDigestException',
-    () {
+    'validate does not parse public JWK for kid-based challenge requests',
+    () async {
+      final generated = AcmeAccountCredentials.generate(
+        acceptTerms: true,
+        contacts: const ['mailto:admin@example.com'],
+      );
+      final dio = _buildMockDio((options) {
+        switch ('${options.method} ${options.uri}') {
+          case 'POST https://example.com/acme/challenge/1':
+            return _jsonResponse(options, const {'status': 'pending'});
+          case 'POST https://example.com/acme/authz/1':
+            return _jsonResponse(options, {
+              'status': 'valid',
+              'identifier': {'type': 'dns', 'value': 'example.com'},
+              'challenges': const <Object?>[],
+            });
+        }
+        throw StateError(
+          'Unexpected request: ${options.method} ${options.uri}',
+        );
+      });
       final client = acmeConnectionBindCredentials(
-        const AcmeConnection(
+        AcmeConnection(
           baseUrl: 'https://acme-staging-v02.api.letsencrypt.org',
+          dio: dio,
         ),
-        const AcmeAccountCredentials(
-          privateKeyPem: 'private',
+        AcmeAccountCredentials(
+          privateKeyPem: generated.privateKeyPem,
           publicKeyPem: 'not-a-public-key',
           acceptTerms: true,
-          contacts: ['mailto:admin@example.com'],
+          contacts: const ['mailto:admin@example.com'],
         ),
       );
       acmeConnectionTestSetAccount(
@@ -118,10 +139,7 @@ void main() {
         authorizationUrl: 'https://example.com/acme/authz/1',
       );
 
-      expect(
-        () => acmeConnectionValidate(client, challenge),
-        throwsA(isA<AcmeAccountKeyDigestException>()),
-      );
+      await expectLater(acmeConnectionValidate(client, challenge), completes);
     },
   );
 
@@ -149,3 +167,30 @@ void main() {
     );
   });
 }
+
+Dio _buildMockDio(
+  Response<Object?> Function(RequestOptions options) responder,
+) {
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) => handler.resolve(responder(options)),
+    ),
+  );
+  return dio;
+}
+
+Response<Object?> _jsonResponse(
+  RequestOptions options,
+  Object? data, {
+  int statusCode = 200,
+  Map<String, List<String>> headers = const {},
+}) => Response<Object?>(
+  requestOptions: options,
+  data: data,
+  statusCode: statusCode,
+  headers: Headers.fromMap({
+    'replay-nonce': ['nonce-next'],
+    ...headers,
+  }),
+);

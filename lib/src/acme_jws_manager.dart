@@ -46,7 +46,6 @@ class AcmeJwsManager {
     try {
       final builder = JsonWebSignatureBuilder();
       final privateJwk = JsonWebKey.fromPem(privateKeyPem);
-      final publicJwk = JsonWebKey.fromPem(publicKeyPem);
 
       if (payload == null) {
         builder.stringContent = '';
@@ -59,6 +58,7 @@ class AcmeJwsManager {
       if (useKid) {
         builder.setProtectedHeader('kid', accountUrl);
       } else {
+        final publicJwk = JsonWebKey.fromPem(publicKeyPem);
         builder.setProtectedHeader('jwk', publicJwk.toJson());
       }
       builder
@@ -196,5 +196,6 @@ class AcmeJwsManager {
     logger?.call(level, message, error: error, stackTrace: stackTrace);
   }
 }
+
 // Internal JOSE error mapping intentionally preserves specific low-level failures.
 // ignore_for_file: avoid_catching_errors, lines_longer_than_80_chars

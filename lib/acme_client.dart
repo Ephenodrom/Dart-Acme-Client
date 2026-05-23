@@ -17,6 +17,7 @@ export 'src/acme_client_exception.dart'
         AcmeOrderException,
         AcmeValidationException;
 export 'src/acme_connection.dart' show AcmeConnection;
+export 'src/acme_dns_resolver.dart' show AcmeDnsResolver;
 export 'src/acme_logger.dart' show AcmeLogFn, AcmeLogLevel;
 export 'src/certificate_credentials.dart' show CertificateCredentials;
 export 'src/model/account.dart' show Account;

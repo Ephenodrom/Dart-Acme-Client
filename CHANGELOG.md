@@ -1,4 +1,14 @@
 # Changelog
+
+## Unreleased
+
+* Added configurable DNS TXT resolvers for challenge self-tests, including a
+  `AcmeDnsResolver.challtestsrv()` helper for local Pebble/challtestsrv
+  integration testing.
+* Fixed kid-based JWS creation so challenge validation does not parse or
+  require a public JWK when the ACME request uses an account URL in the
+  protected `kid` header.
+
 # [2.0.0] 2026-04-05
 * added dns-persist-01 and major refactor to create a fluent api.
 
