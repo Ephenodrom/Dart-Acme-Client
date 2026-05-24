@@ -14,6 +14,8 @@ const _pebbleEnabledEnv = 'ACME_PEBBLE_ENABLE_TESTS';
 const _pebbleBaseUrlEnv = 'ACME_PEBBLE_BASE_URL';
 const _pebbleManagementUrlEnv = 'ACME_PEBBLE_MANAGEMENT_URL';
 const _pebbleHttp01AddressEnv = 'ACME_PEBBLE_HTTP01_ADDRESS';
+const _pebbleDnsHostEnv = 'ACME_PEBBLE_DNS_HOST';
+const _pebbleDnsPortEnv = 'ACME_PEBBLE_DNS_PORT';
 const _pebbleTrustedRootEnv = 'ACME_PEBBLE_TRUSTED_ROOT';
 const _pebbleConfigPathEnv = 'ACME_PEBBLE_CONFIG_PATH';
 const _defaultPebbleConfigPath = 'tool/pebble/pebble-test.local.json';
@@ -25,6 +27,9 @@ void main() {
       Platform.environment[_pebbleBaseUrlEnv] ?? 'https://localhost:14000/dir';
   final managementUrl =
       Platform.environment[_pebbleManagementUrlEnv] ?? 'http://localhost:8055';
+  final dnsHost = Platform.environment[_pebbleDnsHostEnv] ?? 'localhost';
+  final dnsPort =
+      int.tryParse(Platform.environment[_pebbleDnsPortEnv] ?? '') ?? 8053;
   final trustedRootPath = Platform.environment[_pebbleTrustedRootEnv];
   final pebbleConfigPath =
       Platform.environment[_pebbleConfigPathEnv] ?? _defaultPebbleConfigPath;
@@ -37,7 +42,11 @@ void main() {
 
     setUpAll(() async {
       dio = _buildPebbleDio(trustedRootPath);
-      connection = AcmeConnection(baseUrl: baseUrl, dio: dio);
+      connection = AcmeConnection(
+        baseUrl: baseUrl,
+        dio: dio,
+        dnsResolver: AcmeDnsResolver.challtestsrv(host: dnsHost, port: dnsPort),
+      );
       accountCredentials = _loadPebbleCredentials(pebbleConfigPath);
       http01Address = await _resolveHttp01Address();
     });
@@ -209,6 +218,8 @@ Future<List<String>> _issueDnsCertificate({
     proof.txtRecordValue,
   );
 
+  expect(await challenge.selfTest(maxAttempts: 1), isTrue);
+
   final authValid = await challenge.validate();
   expect(authValid, isTrue);
 
@@ -238,6 +249,8 @@ Future<List<String>> _issueDnsPersistCertificate({
     _normalizeTxtHost(proof.txtRecordName),
     proof.txtRecordValue,
   );
+
+  expect(await challenge.selfTest(maxAttempts: 1), isTrue);
 
   final authValid = await challenge.validate();
   expect(authValid, isTrue);
@@ -361,15 +374,12 @@ Future<String> _resolveHttp01Address() async {
     return configured;
   }
 
-  final result = await Process.run(
-    'docker',
-    const [
-      'inspect',
-      '-f',
-      '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}',
-      'pebble-challtestsrv-1',
-    ],
-  );
+  final result = await Process.run('docker', const [
+    'inspect',
+    '-f',
+    '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}',
+    'pebble-challtestsrv-1',
+  ]);
   if (result.exitCode == 0) {
     final address = '${result.stdout}'.trim();
     if (address.isNotEmpty) {

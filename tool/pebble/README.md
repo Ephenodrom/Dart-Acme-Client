@@ -33,6 +33,8 @@ cp tool/pebble/pebble-test.example.json tool/pebble/pebble-test.local.json
 export ACME_PEBBLE_ENABLE_TESTS=true
 export ACME_PEBBLE_BASE_URL=https://localhost:14000/dir
 export ACME_PEBBLE_MANAGEMENT_URL=http://localhost:8055
+export ACME_PEBBLE_DNS_HOST=localhost
+export ACME_PEBBLE_DNS_PORT=8053
 export ACME_PEBBLE_CONFIG_PATH=tool/pebble/pebble-test.local.json
 dart test test/pebble_integration_test.dart
 ```
@@ -52,5 +54,7 @@ dart test test/pebble_integration_test.dart
 - Pebble's official directory endpoint is `/dir`, not `/directory`.
 - The integration test publishes DNS and HTTP challenge state through the
   `challtestsrv` management API.
+- DNS self-tests query `challtestsrv` through UDP on `ACME_PEBBLE_DNS_HOST` and
+  `ACME_PEBBLE_DNS_PORT`, defaulting to `localhost:8053`.
 - `tool/pebble/pebble-test.local.json` is ignored by git and is the intended
   place for local Pebble test credentials.

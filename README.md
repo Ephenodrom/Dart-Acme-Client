@@ -283,7 +283,16 @@ amount of time it will try to observe the proof. The default is 15.
 `selfTest()` reuses the bound `AcmeConnection` only for shared HTTP client
 configuration and logging. It does not contact the CA.
 
-**Note**: The DNS self test uses the Google DNS Rest API to fetch the resource records.
+**Note**: By default the DNS self-test uses the Google DNS REST API to fetch
+the resource records. For local integration tests you can configure a UDP DNS
+server on the connection:
+
+```dart
+  var connection = AcmeConnection(
+    baseUrl: 'https://localhost:14000/dir',
+    dnsResolver: const AcmeDnsResolver.challtestsrv(),
+  );
+```
 
 ```dart
   var self = await challenge.selfTest(); // DnsChallenge
